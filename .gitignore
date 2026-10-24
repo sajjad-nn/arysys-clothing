@@ -1,0 +1,24 @@
+﻿# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Build outputs
+**/dist/
+**/public/build/
+**/coverage/
+
+# Logs and temporary files
+*.log
+.DS_Store
+Thumbs.db
+*.local
+
+# IDE files
+.idea/
+.fleet/
+*.lnk
