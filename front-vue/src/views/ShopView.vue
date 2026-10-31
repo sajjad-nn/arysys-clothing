@@ -1,138 +1,219 @@
 <template>
   <div class="shop-page">
-    <Header />
-
     <main class="shop-container">
-      <h1>فروشگاه Arysys</h1>
-      <p class="shop-description">محصولات مورد علاقه‌ات رو پیدا کن.</p>
+      <!-- عنوان فروشگاه -->
+      <section class="shop-heading">
+        <div class="heading-content">
+          <span class="eyebrow">ARYASYS COLLECTION</span>
+          <h1>فروشگاه</h1>
+          <p>استایل و انتخاب مورد علاقه‌ات را کشف کن.</p>
+        </div>
 
-      <div v-if="loading" class="message">در حال دریافت محصولات...</div>
+        <div class="product-count" v-if="!loading && !error">
+          <span class="count-num">{{ products.length.toLocaleString('fa-IR') }}</span>
+          <span>محصول</span>
+        </div>
+      </section>
+
+      <!-- وضعیت دریافت اطلاعات -->
+      <div v-if="loading" class="message">
+        <span class="loader"></span>
+        <p>در حال بارگذاری محصولات...</p>
+      </div>
 
       <div v-else-if="error" class="message error">
-        {{ error }}
+        <p>{{ error }}</p>
+        <button class="retry-btn" @click="fetchProducts">تلاش مجدد</button>
       </div>
 
       <div v-else-if="products.length === 0" class="message">
         در حال حاضر محصولی برای نمایش وجود ندارد.
       </div>
 
-      <div v-else class="products-grid">
+      <!-- محصولات -->
+      <section v-else class="products-grid">
         <article v-for="product in products" :key="product.id" class="product-card">
-          <img
-            v-if="product.image"
-            :src="imageUrl(product.image)"
-            :alt="product.name"
-            class="product-image"
-          />
+          <!-- تصویر محصول یا تنوع انتخاب‌شده -->
+          <div class="product-media">
+            <img
+              v-if="getCurrentImage(product)"
+              :key="getCurrentImage(product)"
+              :src="imageUrl(getCurrentImage(product))"
+              :alt="product.name"
+              class="product-image"
+              loading="lazy"
+              @error="onImageError($event, product)"
+            />
 
-          <div v-else class="no-image">بدون تصویر</div>
+            <div v-else class="no-image">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>فاقد تصویر</span>
+            </div>
+
+            <div class="media-badges">
+              <span v-if="hasDiscount(product)" class="discount-badge">
+                {{ getDiscountPercent(product) }}٪ تخفیف
+              </span>
+            </div>
+          </div>
 
           <div class="product-info">
-  <h2>{{ product.name }}</h2>
+            <span class="category-name">
+              {{ product.category?.name || 'کالکشن اختصاصی' }}
+            </span>
 
-  <p v-if="product.category">
-    {{ product.category.name }}
-  </p>
+            <h2 :title="product.name">{{ product.name }}</h2>
 
-  <template v-if="hasVariants(product)">
-    <label class="variant-label">رنگ</label>
+            <!-- انتخاب تنوع -->
+            <div v-if="hasVariants(product)" class="variant-options">
+              <div class="variant-field" v-if="getColors(product).length">
+                <label :for="`color-${product.id}`">رنگ</label>
+                <div class="select-wrapper">
+                  <select
+                    :id="`color-${product.id}`"
+                    v-model="selectedVariants[product.id].color"
+                    @change="onColorChange(product)"
+                    class="variant-select"
+                  >
+                    <option v-for="color in getColors(product)" :key="color" :value="color">
+                      {{ color }}
+                    </option>
+                  </select>
+                </div>
+              </div>
 
-    <select
-      v-model="selectedVariants[product.id].color"
-      class="variant-select"
-      @change="onColorChange(product)"
-    >
-      <option
-        v-for="color in getColors(product)"
-        :key="color"
-        :value="color"
-      >
-        {{ color }}
-      </option>
-    </select>
+              <div class="variant-field" v-if="getSizes(product).length">
+                <label :for="`size-${product.id}`">سایز</label>
+                <div class="select-wrapper">
+                  <select
+                    :id="`size-${product.id}`"
+                    v-model="selectedVariants[product.id].size"
+                    @change="onSizeChange(product)"
+                    class="variant-select"
+                  >
+                    <option v-for="size in getSizes(product)" :key="size" :value="size">
+                      {{ size }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-    <label class="variant-label">سایز</label>
+            <!-- قیمت و وضعیت موجودی -->
+            <div class="card-footer-area">
+              <div class="price-area">
+                <div v-if="getCurrentPricing(product).discounted" class="old-price">
+                  {{ formatPrice(getCurrentPricing(product).original) }}
+                </div>
 
-    <select
-      v-model="selectedVariants[product.id].size"
-      class="variant-select"
-      @change="onSizeChange(product)"
-    >
-      <option
-        v-for="size in getSizes(product)"
-        :key="size"
-        :value="size"
-      >
-        {{ size }}
-      </option>
-    </select>
-  </template>
+                <div class="current-price">
+                  <span class="amount">{{ formatPrice(getCurrentPricing(product).current) }}</span>
+                  <span class="unit">تومان</span>
+                </div>
+              </div>
 
-  <div class="product-price">
-    {{ formatPrice(getCurrentPrice(product)) }} تومان
-  </div>
+              <div
+                class="stock-status"
+                :class="getCurrentStock(product) > 0 ? 'available' : 'unavailable'"
+              >
+                <span class="status-pulse"></span>
+                <span>
+                  {{
+                    getCurrentStock(product) > 0
+                      ? `${formatPrice(getCurrentStock(product))} عدد موجود`
+                      : 'ناموجود'
+                  }}
+                </span>
+              </div>
+            </div>
 
-  <button
-    class="add-to-cart-btn"
-    :disabled="getCurrentStock(product) <= 0"
-    @click="addToCart(product)"
-  >
-    {{ getCurrentStock(product) > 0 ? 'افزودن به سبد خرید' : 'ناموجود' }}
-  </button>
-
-  <span v-if="getCurrentStock(product) > 0" class="stock">
-    موجود در انبار: {{ getCurrentStock(product) }} عدد
-  </span>
-
-  <span v-else class="out-of-stock">
-    ناموجود
-  </span>
-</div>
+            <button
+              class="add-to-cart-btn"
+              :disabled="
+                getCurrentStock(product) <= 0 ||
+                (hasVariants(product) && !getSelectedVariant(product))
+              "
+              @click="addToCart(product)"
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              <span>
+                {{ getCurrentStock(product) > 0 ? 'افزودن به سبد خرید' : 'اتمام موجودی' }}
+              </span>
+            </button>
+          </div>
         </article>
-      </div>
+      </section>
     </main>
-
-    <Footer />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import Header from '../components/header.vue'
-import Footer from '../components/footer.vue'
+
+const API_BASE = 'http://127.0.0.1:8000'
 
 const products = ref([])
 const loading = ref(true)
 const error = ref('')
-
 const selectedVariants = ref({})
 
-function hasVariants(product) {
-  return Array.isArray(product.variants) &&
-    product.variants.some(variant => variant.is_active)
+function getVariants(product) {
+  return (product.variants || []).filter(
+    (variant) => variant.is_active !== false && variant.is_active !== 0,
+  )
 }
 
-function getVariants(product) {
-  return (product.variants || []).filter(variant => variant.is_active)
+function hasVariants(product) {
+  return getVariants(product).length > 0
 }
 
 function getColors(product) {
-  return [...new Set(
-    getVariants(product)
-      .map(variant => variant.color)
-      .filter(Boolean)
-  )]
+  return [
+    ...new Set(
+      getVariants(product)
+        .map((variant) => variant.color)
+        .filter((color) => color !== null && color !== undefined && color !== ''),
+    ),
+  ]
 }
 
 function getSizes(product) {
-  const color = selectedVariants.value[product.id]?.color
+  const selected = selectedVariants.value[product.id]
+  const variants = getVariants(product)
 
-  return [...new Set(
-    getVariants(product)
-      .filter(variant => !color || variant.color === color)
-      .map(variant => variant.size)
-      .filter(Boolean)
-  )]
+  const matchingColor = selected?.color
+    ? variants.filter((variant) => variant.color === selected.color)
+    : variants
+
+  return [
+    ...new Set(
+      matchingColor
+        .map((variant) => variant.size)
+        .filter((size) => size !== null && size !== undefined && size !== ''),
+    ),
+  ]
 }
 
 function getSelectedVariant(product) {
@@ -140,20 +221,29 @@ function getSelectedVariant(product) {
 
   if (!selected) return null
 
-  return getVariants(product).find(variant =>
-    variant.color === selected.color &&
-    variant.size === selected.size
-  ) || null
+  const variants = getVariants(product)
+
+  return (
+    variants.find((variant) => {
+      const colorMatches = !selected.color || variant.color === selected.color
+
+      const sizeMatches = !selected.size || variant.size === selected.size
+
+      return colorMatches && sizeMatches
+    }) || null
+  )
 }
 
 function initializeVariant(product) {
-  if (!hasVariants(product)) return
+  const variants = getVariants(product)
 
-  const firstVariant = getVariants(product)[0]
+  if (!variants.length) return
+
+  const first = variants[0]
 
   selectedVariants.value[product.id] = {
-    color: firstVariant.color || '',
-    size: firstVariant.size || '',
+    color: first.color || '',
+    size: first.size || '',
   }
 
   syncVariantSelection(product)
@@ -166,49 +256,149 @@ function syncVariantSelection(product) {
 
   const variants = getVariants(product)
 
-  const matchingColor = variants.find(
-    variant => variant.color === selected.color
+  const colorVariants = variants.filter(
+    (variant) => !selected.color || variant.color === selected.color,
   )
 
-  if (!matchingColor) {
+  if (selected.color && !variants.some((variant) => variant.color === selected.color)) {
     selected.color = variants[0]?.color || ''
   }
 
-  const sizes = getSizes(product)
+  const validSizes = colorVariants
+    .filter((variant) => !selected.color || variant.color === selected.color)
+    .map((variant) => variant.size)
+    .filter(Boolean)
 
-  if (!sizes.includes(selected.size)) {
-    selected.size = sizes[0] || ''
+  if (selected.size && !validSizes.includes(selected.size)) {
+    selected.size = validSizes[0] || ''
+  }
+
+  if (!selected.color && selected.size) {
+    const matching = variants.find((v) => v.size === selected.size)
+    if (matching?.color) selected.color = matching.color
   }
 }
 
 function onColorChange(product) {
-  syncVariantSelection(product)
+  const selected = selectedVariants.value[product.id]
+  const variants = getVariants(product)
+
+  const matching = variants.filter((variant) => variant.color === selected.color)
+
+  if (!matching.some((variant) => variant.size === selected.size)) {
+    selected.size = matching[0]?.size || ''
+  }
 }
 
 function onSizeChange(product) {
   syncVariantSelection(product)
 }
 
-function getCurrentPrice(product) {
+function getCurrentPricing(product) {
   const variant = getSelectedVariant(product)
+  const item = variant || product
 
-  if (!variant) {
-    return product.discount_price ?? product.price
+  const original = item.price
+  const discount = item.discount_price
+
+  const hasOriginal = original !== null && original !== undefined && original !== ''
+
+  const hasDiscount = discount !== null && discount !== undefined && discount !== ''
+
+  const originalNumber = Number(original)
+  const discountNumber = Number(discount)
+
+  const discounted =
+    hasOriginal &&
+    hasDiscount &&
+    Number.isFinite(originalNumber) &&
+    Number.isFinite(discountNumber) &&
+    discountNumber >= 0 &&
+    discountNumber < originalNumber
+
+  return {
+    original: hasOriginal ? originalNumber : null,
+    current: discounted ? discountNumber : hasOriginal ? originalNumber : null,
+    discounted,
   }
+}
 
-  return variant.discount_price ?? variant.price
+function hasDiscount(product) {
+  return getCurrentPricing(product).discounted
+}
+
+function getDiscountPercent(product) {
+  const pricing = getCurrentPricing(product)
+
+  if (!pricing.discounted || !pricing.original) return 0
+
+  return Math.round(((pricing.original - pricing.current) / pricing.original) * 100)
 }
 
 function getCurrentStock(product) {
-  const variant = getSelectedVariant(product)
+  const variant = hasVariants(product) ? getSelectedVariant(product) : null
 
-  return variant ? variant.stock : product.stock
+  const stock = hasVariants(product) ? variant?.stock : product.stock
+
+  return Math.max(0, Number(stock) || 0)
 }
 
-// دریافت محصولات از Laravel
+function getCurrentImage(product) {
+  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+
+  return variant?.image || product.image || ''
+}
+
+function imageUrl(image) {
+  if (!image || typeof image !== 'string') return ''
+
+  const value = image.trim()
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '').replace(/^storage\//, '')
+
+  return `${API_BASE}/storage/${cleanPath}`
+}
+
+function onImageError(event, product) {
+  const imageElement = event.target
+  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+
+  if (variant?.image && product.image) {
+    const variantUrl = imageUrl(variant.image)
+    const mainUrl = imageUrl(product.image)
+
+    if (imageElement.dataset.fallbackUsed !== 'true' && variantUrl !== mainUrl) {
+      imageElement.dataset.fallbackUsed = 'true'
+      imageElement.src = mainUrl
+      return
+    }
+  }
+
+  imageElement.style.display = 'none'
+}
+
+function formatPrice(price) {
+  if (price === null || price === undefined || price === '') {
+    return 'قیمت ثبت نشده'
+  }
+
+  const number = Number(price)
+
+  if (!Number.isFinite(number)) return 'قیمت ثبت نشده'
+
+  return number.toLocaleString('fa-IR')
+}
+
 async function fetchProducts() {
+  loading.value = true
+  error.value = ''
+
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/products')
+    const response = await fetch(`${API_BASE}/api/products`)
 
     if (!response.ok) {
       throw new Error('دریافت محصولات با خطا مواجه شد.')
@@ -216,8 +406,10 @@ async function fetchProducts() {
 
     const data = await response.json()
 
-    // پشتیبانی از پاسخ آرایه‌ای و پاسخ صفحه‌بندی‌شده Laravel
     products.value = Array.isArray(data) ? data : (data.data ?? [])
+
+    selectedVariants.value = {}
+
     products.value.forEach(initializeVariant)
   } catch (err) {
     error.value = err.message || 'ارتباط با سرور برقرار نشد.'
@@ -226,20 +418,8 @@ async function fetchProducts() {
   }
 }
 
-function imageUrl(image) {
-  if (image.startsWith('http://') || image.startsWith('https://')) {
-    return image
-  }
-
-  return `http://127.0.0.1:8000/storage/${image.replace(/^\/+/, '')}`
-}
-
-function formatPrice(price) {
-  return Number(price).toLocaleString('fa-IR')
-}
-
 function addToCart(product) {
-  const variant = getSelectedVariant(product)
+  const variant = hasVariants(product) ? getSelectedVariant(product) : null
 
   if (hasVariants(product) && !variant) {
     alert('لطفاً یک ترکیب رنگ و سایز معتبر انتخاب کن.')
@@ -257,233 +437,455 @@ function addToCart(product) {
 
   alert(`محصول «${product.name}» انتخاب شد.${details}`)
 }
+
 onMounted(fetchProducts)
 </script>
 
 <style scoped>
-.shop-container {
+.shop-page {
+  min-height: 100vh;
+  background-color: #fbfbfd;
+  color: #1a1a1a;
   direction: rtl;
-  max-width: 1200px;
+  font-family: inherit;
+}
+
+.shop-container {
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 40px 20px 60px;
-  min-height: 400px;
+  padding: 56px 28px 100px;
+  box-sizing: border-box;
 }
 
-.shop-container h1 {
-  font-size: 28px;
-  margin: 0 0 10px;
+/* هدر صفحه */
+.shop-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 44px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.shop-description {
-  color: #777;
-  margin-bottom: 30px;
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #a38253;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  direction: ltr;
 }
 
-/* شبکه محصولات */
+.shop-heading h1 {
+  margin: 0;
+  font-size: clamp(26px, 3.5vw, 36px);
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.5px;
+}
+
+.shop-heading p {
+  margin: 8px 0 0;
+  color: #71717a;
+  font-size: 14.5px;
+}
+
+.product-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  border-radius: 9999px;
+  color: #71717a;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.count-num {
+  font-weight: 700;
+  color: #18181b;
+}
+/* گرید محصولات */
 .products-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
   align-items: stretch;
-  gap: 24px;
 }
 
 /* کارت محصول */
 .product-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100%;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #f0f0f2;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
   overflow: hidden;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  background: #fff;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  box-sizing: border-box;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px #00000012;
+  transform: translateY(-6px);
+  border-color: #e4e4e7;
+  box-shadow: 0 20px 32px -8px rgba(0, 0, 0, 0.08);
 }
 
-/* تصویر محصول */
-.product-image,
-.no-image {
-  display: block;
+/* بخش مدیا و تصویر */
+.product-media {
+  position: relative;
+  overflow: hidden;
   width: 100%;
-  height: 240px;
-  flex-shrink: 0;
+  aspect-ratio: 1 / 1.15;
+  background: #f4f4f5;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.06);
 }
 
 .no-image {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
-  color: #888;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: #a1a1aa;
+  font-size: 12px;
 }
 
-/* اطلاعات محصول */
+.media-badges {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+
+.discount-badge {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.9);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+/* جزییات کارت */
 .product-info {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 16px;
-  box-sizing: border-box;
+  padding: 20px 18px 18px;
 }
 
-/* عنوان‌ها ارتفاع یکسان دارند */
-.product-info h2 {
-  font-size: 17px;
-  line-height: 24px;
-  min-height: 48px;
-  margin: 0 0 10px;
-}
-
-/* فضای دسته‌بندی حتی برای محصول بدون دسته حفظ می‌شود */
-.product-info p {
-  min-height: 21px;
-  line-height: 21px;
-  margin: 0;
-  color: #777;
-  font-size: 14px;
-}
-
-.variant-label {
+.category-name {
   display: block;
-  margin-top: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a38253;
   margin-bottom: 6px;
-  color: #555;
-  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.product-info h2 {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #18181b;
+  margin: 0 0 16px;
+  min-height: 45px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* سلکتورها و مشخصه‌ها */
+.variant-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid #f2f2f4;
+}
+
+.variant-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #71717a;
+  margin-bottom: 5px;
+}
+
+.select-wrapper {
+  position: relative;
 }
 
 .variant-select {
   width: 100%;
-  min-height: 38px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 7px;
-  background: #fff;
-  font-family: inherit;
-  font-size: 13px;
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #27272a;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 8px center;
+  padding-left: 24px;
 }
 
-.add-to-cart-btn:disabled {
-  background: #aaa;
-  cursor: not-allowed;
+.variant-select:focus {
+  border-color: #18181b;
+  box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.06);
 }
 
-/* قیمت‌ها در پایین کارت تراز می‌شوند */
-.product-price {
+/* فوتر کارت */
+.card-footer-area {
   margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
   padding-top: 14px;
-  font-weight: bold;
-  line-height: 24px;
+  border-top: 1px dashed #e4e4e7;
 }
 
-/* وضعیت موجودی */
-.stock,
-.out-of-stock {
-  display: block;
-  min-height: 20px;
-  margin-top: 8px;
-  font-size: 13px;
-  line-height: 20px;
+.price-area {
+  display: flex;
+  flex-direction: column;
 }
 
-.stock {
-  color: #16834a;
+.old-price {
+  font-size: 12px;
+  color: #a1a1aa;
+  text-decoration: line-through;
+  margin-bottom: 2px;
 }
 
-.out-of-stock {
-  color: #c0392b;
+.current-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.current-price .amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: #09090b;
+}
+
+.current-price .unit {
+  font-size: 11px;
+  color: #71717a;
+}
+
+/* نشانگر موجودی */
+.stock-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.status-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.available {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.available .status-pulse {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.unavailable {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.unavailable .status-pulse {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 
 /* دکمه خرید */
 .add-to-cart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  min-height: 44px;
-  margin-top: 14px;
+  margin-top: 16px;
   padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #222;
-  color: #fff;
-  font-size: 14px;
+  background: #18181b;
+  color: #ffffff;
+  border: 1px solid #18181b;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
-  box-sizing: border-box;
+  transition: all 0.25s ease;
 }
 
-.add-to-cart-btn:hover {
-  background: #444;
+.add-to-cart-btn:hover:not(:disabled) {
+  background: #27272a;
+  border-color: #27272a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.15);
 }
 
-/* پیام‌ها */
+.add-to-cart-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.add-to-cart-btn:disabled {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #a1a1aa;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* وضعیت‌های لودینگ و ارور */
 .message {
-  padding: 30px;
+  padding: 80px 20px;
   text-align: center;
+  color: #71717a;
+  font-size: 15px;
 }
 
 .error {
-  color: #c0392b;
+  color: #dc2626;
 }
 
-/* تبلت */
-@media (max-width: 900px) {
+.retry-btn {
+  margin-top: 14px;
+  padding: 10px 24px;
+  background: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.retry-btn:hover {
+  opacity: 0.9;
+}
+
+.loader {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e4e4e7;
+  border-top-color: #18181b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ریسپانسیو */
+@media (max-width: 1100px) {
+  .products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .shop-container {
+    padding: 36px 16px 64px;
+  }
+
   .products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-  }
-}
-
-/* موبایل */
-@media (max-width: 480px) {
-  .shop-container {
-    padding: 25px 12px 40px;
+    gap: 16px;
   }
 
-  .shop-container h1 {
-    font-size: 23px;
-  }
-
-  .shop-description {
-    margin-bottom: 22px;
-  }
-
-  .products-grid {
-    gap: 12px;
-  }
-
-  .product-image,
-  .no-image {
-    height: 170px;
+  .shop-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    gap: 16px;
   }
 
   .product-info {
-    padding: 12px;
+    padding: 14px;
   }
 
   .product-info h2 {
-    font-size: 15px;
-    line-height: 22px;
-    min-height: 44px;
+    font-size: 13.5px;
+    min-height: 40px;
+    margin-bottom: 12px;
   }
 
-  .product-info p {
-    font-size: 12px;
+  .card-footer-area {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
-  .product-price {
-    font-size: 14px;
+  .current-price .amount {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+    max-width: 380px;
+    margin: 0 auto;
   }
 
-  .add-to-cart-btn {
-    padding: 10px 6px;
-    font-size: 12px;
+  .variant-options {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

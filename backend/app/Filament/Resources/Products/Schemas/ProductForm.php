@@ -8,8 +8,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
 use Filament\Forms\Components\Repeater;
+use Filament\Schemas\Schema;
 
 class ProductForm
 {
@@ -17,28 +17,22 @@ class ProductForm
     {
         return $schema
             ->components([
+
+                // اطلاعات عمومی محصول
                 TextInput::make('name')
                     ->label('نام محصول')
                     ->required()
                     ->maxLength(255),
 
-                Textarea::make('description')
-                    ->label('توضیحات محصول')
-                    ->rows(4)
-                    ->columnSpanFull(),
-
-                TextInput::make('price')
-                    ->label('قیمت (تومان)')
-                    ->numeric()
+                Select::make('product_type')
+                    ->label('نوع محصول')
+                    ->options([
+                        'simple' => 'محصول ساده',
+                        'variant' => 'محصول تنوع‌دار',
+                    ])
+                    ->default('simple')
                     ->required()
-                    ->minValue(0),
-
-                TextInput::make('stock')
-                    ->label('موجودی انبار')
-                    ->numeric()
-                    ->required()
-                    ->minValue(0)
-                    ->default(0),
+                    ->live(),
 
                 Select::make('category_id')
                     ->label('دسته‌بندی')
@@ -51,18 +45,86 @@ class ProductForm
                     ->searchable()
                     ->required(),
 
+                Textarea::make('description')
+                    ->label('توضیحات محصول')
+                    ->rows(4)
+                    ->columnSpanFull(),
+
+                // اطلاعات محصول ساده
+                TextInput::make('price')
+                    ->label('قیمت اصلی (تومان)')
+                    ->numeric()
+                    ->minValue(0)
+                    ->required(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->visible(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->dehydrated(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    ),
+
+                TextInput::make('discount_price')
+                    ->label('قیمت تخفیف‌خورده (تومان) - اختیاری')
+                    ->numeric()
+                    ->nullable()
+                    ->minValue(0)
+                    ->visible(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->dehydrated(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    ),
+
+                TextInput::make('stock')
+                    ->label('موجودی انبار')
+                    ->numeric()
+                    ->minValue(0)
+                    ->default(0)
+                    ->required(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->visible(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->dehydrated(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    ),
+
                 FileUpload::make('image')
-                    ->label('تصویر محصول')
+                    ->label('تصویر اصلی محصول')
                     ->image()
                     ->disk('public')
                     ->directory('products')
-                    ->visibility('public'),
+                    ->visibility('public')
+                    ->visible(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    )
+                    ->dehydrated(
+                        fn ($get) =>
+                        $get('product_type') === 'simple'
+                    ),
 
-
+                // تنوع‌های محصول
                 Repeater::make('variants')
                     ->label('تنوع‌های محصول')
                     ->relationship()
+                    ->visible(
+                        fn ($get) =>
+                        $get('product_type') === 'variant'
+                    )
                     ->schema([
+
                         TextInput::make('color')
                             ->label('رنگ')
                             ->placeholder('مثلاً مشکی')
@@ -79,19 +141,19 @@ class ProductForm
                             ->unique(ignoreRecord: true),
 
                         TextInput::make('price')
-                            ->label('قیمت (تومان)')
+                            ->label('قیمت اصلی (تومان)')
                             ->numeric()
                             ->required()
                             ->minValue(0),
 
                         TextInput::make('discount_price')
-                            ->label('قیمت تخفیف‌خورده (تومان)')
+                            ->label('قیمت تخفیف‌خورده (تومان) - اختیاری')
                             ->numeric()
                             ->nullable()
                             ->minValue(0),
 
                         TextInput::make('stock')
-                            ->label('موجودی')
+                            ->label('موجودی این تنوع')
                             ->numeric()
                             ->required()
                             ->minValue(0)
@@ -111,16 +173,22 @@ class ProductForm
                     ->columns(2)
                     ->collapsible()
                     ->itemLabel(
-                        fn(array $state): ?string =>
-                        trim(($state['color'] ?? '') . ' - ' . ($state['size'] ?? '')) ?: 'تنوع جدید'
+                        fn (array $state): ?string =>
+                        trim(
+                            ($state['color'] ?? '') .
+                            ' - ' .
+                            ($state['size'] ?? ''),
+                            ' -'
+                        ) ?: 'تنوع جدید'
                     )
                     ->addActionLabel('افزودن رنگ و سایز')
                     ->columnSpanFull(),
 
-
+                // وضعیت کلی محصول
                 Toggle::make('is_active')
                     ->label('فعال بودن محصول')
                     ->default(true),
+
             ]);
     }
 }

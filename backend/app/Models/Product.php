@@ -22,6 +22,7 @@ class Product extends Model
         'image',
         'is_active',
         'category_id',
+        'product_type',
     ];
 
     protected $casts = [

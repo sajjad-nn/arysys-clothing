@@ -22,3 +22,6 @@ Thumbs.db
 .idea/
 .fleet/
 *.lnk
+/backend-production/
+/arysys-backend-production.zip
+/backend/public.zip

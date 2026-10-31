@@ -1,17 +1,13 @@
-
 <template>
   <footer class="footer">
     <div class="footer-container">
-
       <!-- معرفی برند -->
       <div class="footer-about">
-        <h2 class="footer-logo">
-          ARYASYS <span>SHOP</span>
-        </h2>
+        <h2 class="footer-logo">ARYASYS <span>SHOP</span></h2>
 
         <p>
-          آریاسیـس وب، ارائه‌دهنده خدمات طراحی سایت
-          با طراحی مدرن، تجربه کاربری مناسب و کیفیت حرفه‌ای.
+          آریاسیـس وب، ارائه‌دهنده خدمات طراحی سایت با طراحی مدرن، تجربه کاربری مناسب و کیفیت
+          حرفه‌ای.
         </p>
       </div>
 
@@ -71,7 +67,6 @@
         </p>
 
         <div class="social-links">
-
           <a
             href="https://instagram.com/"
             target="_blank"
@@ -98,53 +93,83 @@
             rel="noopener noreferrer"
             aria-label="Telegram"
           >
-            <svg
-              viewBox="0 0 24 24"
-              class="social-icon"
-              fill="currentColor"
-            >
+            <svg viewBox="0 0 24 24" class="social-icon" fill="currentColor">
               <path
                 d="M21.5 3.5 18.3 20c-.24 1.17-.87 1.46-1.76.91l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94 8.99-8.12c.39-.35-.09-.54-.61-.19L6 13.79l-4.7-1.47c-1.02-.32-1.04-1.02.21-1.51L19.9 3.07c.84-.31 1.58.2 1.6.43Z"
               />
             </svg>
             <span>تلگرام</span>
           </a>
-
         </div>
       </div>
-
     </div>
 
     <!-- پایین فوتر -->
     <div class="footer-bottom">
-      <p>
-        © تمامی حقوق این سایت محفوظ است.
-      </p>
+      <p>© تمامی حقوق این سایت محفوظ است.</p>
 
-      <p class="footer-credit">
-        طراحی شده با ❤️ توسط ARYASYS WEB
-      </p>
+      <p class="footer-credit">طراحی شده با ❤️ توسط ARYASYS WEB</p>
     </div>
   </footer>
 </template>
 
 <style scoped>
 .footer {
+  --gold: #c7a66a;
+  --gold-light: #e0c48c;
+
+  position: relative;
+  overflow: hidden;
   direction: rtl;
-  background: #171717;
+  background:
+    radial-gradient(50% 70% at 90% 0%, rgba(199, 166, 106, 0.16) 0%, transparent 65%),
+    radial-gradient(40% 60% at 0% 100%, rgba(199, 166, 106, 0.08) 0%, transparent 70%), #0a0908;
   color: #e5e5e5;
-  padding: 65px 8% 0;
+  padding: 72px 8% 0;
   margin-top: 80px;
+  border-radius: 36px 36px 0 0;
   font-family: inherit;
+}
+
+/* خط طلایی نازک لبه بالا */
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(224, 196, 140, 0.7), transparent);
+  pointer-events: none;
+}
+
+/* حلقه تزئینی هماهنگ با هیرو */
+.footer::after {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  bottom: -150px;
+  right: 6%;
+  border: 1px solid rgba(199, 166, 106, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 40px rgba(199, 166, 106, 0.03);
+  pointer-events: none;
+}
+
+.footer-container,
+.footer-bottom {
+  position: relative;
+  z-index: 1;
 }
 
 .footer-container {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 1.2fr;
+  grid-template-columns: 1.3fr 1fr 1fr 1.3fr;
   gap: 40px;
   max-width: 1400px;
   margin: 0 auto;
-  padding-bottom: 50px;
+  padding-bottom: 54px;
 }
 
 .footer-about,
@@ -157,29 +182,51 @@
   direction: ltr;
   text-align: right;
   color: #fff;
-  font-size: 27px;
+  font-size: 28px;
   font-weight: 800;
   margin: 0 0 20px;
   letter-spacing: 1px;
 }
 
 .footer-logo span {
-  color: #b5a078;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--gold);
 }
 
 .footer-about p {
-  color: #aaa;
+  color: #a8a196;
   font-size: 14px;
   line-height: 2.2;
   margin: 0;
+  max-width: 340px;
 }
 
+/* عنوان ستون‌ها */
+
 .footer-column h3 {
+  position: relative;
   color: #fff;
   font-size: 17px;
-  margin: 5px 0 25px;
-  font-weight: 600;
+  margin: 5px 0 28px;
+  padding-bottom: 14px;
+  font-weight: 700;
 }
+
+.footer-column h3::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
+}
+
+/* لینک‌ها */
 
 .footer-column ul {
   list-style: none;
@@ -188,72 +235,126 @@
 }
 
 .footer-column li {
-  margin-bottom: 16px;
+  margin-bottom: 15px;
 }
 
 .footer-column li a {
-  color: #aaa;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  color: #a8a196;
   font-size: 14px;
   text-decoration: none;
-  transition: color 0.25s ease;
+  transition:
+    color 0.25s ease,
+    gap 0.25s ease;
+}
+
+.footer-column li a::before {
+  content: '';
+  width: 0;
+  height: 1px;
+  background: var(--gold);
+  transition: width 0.25s ease;
 }
 
 .footer-column li a:hover {
-  color: #b5a078;
+  gap: 8px;
+  color: var(--gold-light);
+}
+
+.footer-column li a:hover::before {
+  width: 12px;
+}
+
+/* کارت تماس شیشه‌ای */
+
+.footer-contact {
+  padding: 24px 24px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.footer-contact h3 {
+  margin-bottom: 22px;
 }
 
 .footer-contact p {
-  color: #aaa;
+  color: #a8a196;
   font-size: 13px;
   line-height: 2;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   overflow-wrap: anywhere;
 }
 
 .footer-contact p > span {
-  color: #fff;
+  color: var(--gold-light);
   margin-left: 5px;
 }
 
 .social-links {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 15px;
-  margin-top: 22px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .social-links a {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  color: #aaa;
-  font-size: 14px;
+  gap: 9px;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d6d0c4;
+  font-size: 13px;
   text-decoration: none;
-  transition: color 0.25s ease;
+  transition:
+    color 0.25s ease,
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
 }
 
 .social-links a:hover {
-  color: #b5a078;
+  transform: translateY(-3px);
+  color: #17130b;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
 }
 
 .social-icon {
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   flex-shrink: 0;
 }
 
+.footer-column li a:focus-visible,
+.social-links a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* پایین فوتر */
+
 .footer-bottom {
-  border-top: 1px solid #333;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   max-width: 1400px;
   margin: 0 auto;
-  padding: 22px 0;
+  padding: 24px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 15px;
-  color: #999;
+  color: #8d867b;
   font-size: 13px;
 }
 
@@ -262,6 +363,17 @@
   line-height: 1.8;
 }
 
+.footer-credit {
+  color: #a8a196;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-column li a,
+  .footer-column li a::before,
+  .social-links a {
+    transition: none;
+  }
+}
 
 /* تبلت: دو ستون */
 @media (min-width: 577px) and (max-width: 992px) {
@@ -284,8 +396,9 @@
 /* موبایل: معرفی بالا، لینک‌ها دو ستونه، تماس تمام‌عرض */
 @media (max-width: 576px) {
   .footer {
-    padding: 40px 22px 0;
+    padding: 44px 20px 0;
     margin-top: 50px;
+    border-radius: 28px 28px 0 0;
   }
 
   .footer-container {
@@ -307,11 +420,13 @@
   .footer-about p {
     font-size: 13px;
     line-height: 2;
+    max-width: none;
   }
 
   .footer-column h3 {
     font-size: 15px;
     margin: 0 0 18px;
+    padding-bottom: 12px;
   }
 
   .footer-column li {
@@ -324,8 +439,8 @@
 
   .footer-contact {
     grid-column: 1 / -1;
-    border-top: 1px solid #333;
-    padding-top: 25px;
+    padding: 20px 18px;
+    border-radius: 20px;
   }
 
   .footer-contact p {
@@ -333,19 +448,18 @@
   }
 
   .social-links {
-    flex-direction: row;
-    align-items: center;
-    gap: 22px;
-    margin-top: 18px;
+    margin-top: 16px;
   }
 
   .social-links a {
-    font-size: 13px;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 12px;
   }
 
   .social-icon {
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 18px;
   }
 
   .footer-bottom {
@@ -357,5 +471,4 @@
     font-size: 11px;
   }
 }
-
 </style>
