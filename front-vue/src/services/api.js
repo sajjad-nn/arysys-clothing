@@ -10,4 +10,8 @@ const api = axios.create({
   },
 })
 
+export const logout = () => {
+  return api.post('/api/logout')
+}
+
 export default api

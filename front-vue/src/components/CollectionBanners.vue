@@ -6,9 +6,9 @@ const containerRef = ref(null)
 const womenRef = ref(null)
 const menRef = ref(null)
 
-const GAP = 14
+const GAP = 8
 const RADIUS = 28
-const BEND = 20
+const INNER_RADIUS = 10
 const STEP_WIDTH = 120
 const STEP_RATIO = 0.5
 
@@ -17,6 +17,12 @@ function roundedPath(points) {
   let d = ''
 
   points.forEach(([x, y, r], i) => {
+    // گوشه تیز
+    if (r === 0) {
+      d += `${i === 0 ? 'M' : 'L'}${x} ${y}`
+      return
+    }
+
     const [px, py] = points[(i - 1 + n) % n]
     const [nx, ny] = points[(i + 1) % n]
 
@@ -61,24 +67,25 @@ function updateShapes() {
   const xUpper = W / 2 - stepW / 2
   const xLower = W / 2 + stepW / 2
   const stepY = Math.round(H * STEP_RATIO)
-  const outer = BEND + GAP
 
+  // بنر مردانه (سمت چپ)
   const left = roundedPath([
     [0, 0, RADIUS],
-    [xUpper - half, 0, RADIUS],
-    [xUpper - half, stepY, outer],
-    [xLower - half, stepY, BEND],
-    [xLower - half, H, RADIUS],
+    [xUpper - half, 0, 0],
+    [xUpper - half, stepY, INNER_RADIUS],
+    [xLower - half, stepY, INNER_RADIUS],
+    [xLower - half, H, 0],
     [0, H, RADIUS],
   ])
 
+  // بنر زنانه (سمت راست)
   const right = roundedPath([
-    [xUpper + half, 0, RADIUS],
+    [xUpper + half, 0, 0],
     [W, 0, RADIUS],
     [W, H, RADIUS],
-    [xLower + half, H, RADIUS],
-    [xLower + half, stepY - GAP, outer],
-    [xUpper + half, stepY - GAP, BEND],
+    [xLower + half, H, 0],
+    [xLower + half, stepY - GAP, INNER_RADIUS],
+    [xUpper + half, stepY - GAP, INNER_RADIUS],
   ])
 
   men.style.clipPath = `path('${left}')`
@@ -200,10 +207,12 @@ onUnmounted(() => {
 
 .banner-image {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  width: 60%;
   z-index: 0;
 
-    background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 
@@ -215,6 +224,8 @@ onUnmounted(() => {
 /* Women Image */
 
 .women-banner .banner-image {
+  right: 0;
+
   background-image:
     linear-gradient(
       90deg,
@@ -228,6 +239,8 @@ onUnmounted(() => {
 /* Men Image */
 
 .men-banner .banner-image {
+  left: 0;
+
   background-image:
     linear-gradient(
       90deg,
@@ -457,9 +470,15 @@ onUnmounted(() => {
     justify-content: center;
   }
 
-  .women-banner,
-  .men-banner {
-    background-position: center;
+  /* تصویر تمام کارت را می‌گیرد */
+
+  .women-banner .banner-image,
+  .men-banner .banner-image {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
   }
 
   /* Both Banners Centered */

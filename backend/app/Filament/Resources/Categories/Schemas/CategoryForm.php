@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Categories\Schemas;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Schema;
 
 class CategoryForm
@@ -22,6 +23,14 @@ class CategoryForm
                     ->label('Slug')
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
+
+                FileUpload::make('image')
+                    ->label('تصویر دسته‌بندی')
+                    ->image()
+                    ->disk('public')
+                    ->directory('categories')
+                    ->imageEditor()
+                    ->nullable(),
 
                 Textarea::make('description')
                     ->label('توضیحات')

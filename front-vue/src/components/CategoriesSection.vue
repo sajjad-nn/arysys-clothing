@@ -1,32 +1,24 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import api from '../services/api'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Autoplay, Navigation } from 'swiper/modules'
 
-// تصاویر دسته‌بندی‌ها
-import menImage from '../asset/images/categories/men.webp'
-import womenImage from '../asset/images/categories/women.webp'
-import shoesImage from '../asset/images/categories/shoes.webp'
-import kidsImage from '../asset/images/categories/kids.webp'
-import accessoriesImage from '../asset/images/categories/accessories.webp'
-import sportswearImage from '../asset/images/categories/sportswear.webp'
+import 'swiper/css'
+import 'swiper/css/navigation'
+
+import api from '../services/api'
 
 const categories = ref([])
 const loading = ref(true)
 const error = ref(false)
 
-// اتصال تصاویر به دسته‌بندی‌ها
-const categoryImages = {
-  Sportswear: sportswearImage,
-  'Bags & Accessories': accessoriesImage,
-  shoes: shoesImage,
-  kids: kidsImage,
-  'men-clothing': menImage,
-  'women-clothing': womenImage,
-}
+const swiperModules = [Autoplay, Navigation]
 
-const getCategoryImage = (category) => {
-  return categoryImages[category.slug] || ''
+const autoplayOptions = {
+  delay: 3500,
+  disableOnInteraction: false,
+  pauseOnMouseEnter: true,
 }
 
 const fetchCategories = async () => {
@@ -62,26 +54,58 @@ onMounted(fetchCategories)
 
     <div v-else-if="error" class="message error">دریافت دسته‌بندی‌ها با مشکل مواجه شد.</div>
 
-    <div v-else-if="categories.length" class="categories-grid">
-      <div v-for="category in categories" :key="category.id" class="card-wrapper">
-        <RouterLink :to="`/shop?category=${category.slug}`" class="category-card">
-          <!-- لایه درخشش شیشه‌ای سه‌بعدی -->
-          <div class="card-glare"></div>
+    <div v-else-if="categories.length" class="slider-container">
+      <Swiper
+        class="categories-slider"
+        dir="rtl"
+        :modules="swiperModules"
+        :slides-per-view="1.5"
+        :space-between="10"
+        :navigation="true"
+        :autoplay="autoplayOptions"
+        :rewind="true"
+        :breakpoints="{
+          601: {
+            slidesPerView: 3,
+            spaceBetween: 12,
+          },
+          1101: {
+            slidesPerView: 6,
+            spaceBetween: 12,
+          },
+        }"
+      >
+        <SwiperSlide v-for="category in categories" :key="category.id" class="category-slide">
+          <div class="card-wrapper">
+            <RouterLink :to="`/shop?category=${category.slug}`" class="category-card">
+              <!-- تصویر دسته‌بندی از دیتابیس -->
 
-          <div class="category-image">
-            <img
-              v-if="getCategoryImage(category)"
-              :src="getCategoryImage(category)"
-              :alt="category.name"
-            />
-            <div v-else class="image-placeholder">تصویر موجود نیست</div>
-          </div>
+              <img
+                v-if="category.image_url"
+                class="card-cover"
+                :src="category.image_url"
+                :alt="category.name"
+              />
 
-          <div class="card-title-box">
-            <h3>{{ category.name }}</h3>
+              <div v-else class="image-placeholder">تصویر موجود نیست</div>
+
+              <!-- گرادیان تیره -->
+
+              <div class="card-overlay"></div>
+
+              <!-- درخشش شیشه‌ای -->
+
+              <div class="card-glare"></div>
+
+              <!-- عنوان -->
+
+              <div class="card-title-box">
+                <h3>{{ category.name }}</h3>
+              </div>
+            </RouterLink>
           </div>
-        </RouterLink>
-      </div>
+        </SwiperSlide>
+      </Swiper>
     </div>
 
     <div v-else class="message">دسته‌بندی‌ای برای نمایش وجود ندارد.</div>
@@ -100,7 +124,7 @@ onMounted(fetchCategories)
   margin: 70px auto;
 }
 
-/* ───────── عنوان بخش ───────── */
+/* عنوان بخش */
 
 .section-heading {
   text-align: right;
@@ -135,37 +159,89 @@ onMounted(fetchCategories)
   font-size: 14px;
 }
 
-/* ───────── شبکه دسته‌بندی‌ها ───────── */
+/* اسلایدر */
 
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 22px;
+.slider-container {
+  position: relative;
+  padding: 12px 2px;
 }
 
-/* کانتینر پرسپکتیو برای هر کارت تا زاویه چرخش طبیعی و مستقل داشته باشد */
+.categories-slider {
+  overflow: visible;
+}
+
+:deep(.swiper-wrapper) {
+  align-items: stretch;
+}
+
+:deep(.swiper-slide) {
+  height: auto;
+}
+
+/* دکمه‌های قبلی و بعدی */
+
+:deep(.swiper-button-next),
+:deep(.swiper-button-prev) {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+
+  background: #fff;
+  color: var(--gold-deep);
+
+  border: 1px solid rgba(199, 166, 106, 0.3);
+
+  box-shadow: 0 5px 15px rgba(23, 20, 15, 0.12);
+
+  transition:
+    background 0.3s ease,
+    color 0.3s ease,
+    transform 0.3s ease;
+}
+
+:deep(.swiper-button-next::after),
+:deep(.swiper-button-prev::after) {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+:deep(.swiper-button-next:hover),
+:deep(.swiper-button-prev:hover) {
+  background: var(--gold);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* کارت */
+
 .card-wrapper {
+  width: 100%;
+  height: 100%;
   perspective: 1200px;
 }
 
 .category-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
   min-width: 0;
-  padding: 10px 10px 16px;
+
   border-radius: 24px;
-  background: #ffffff;
+  background: #f3efe9;
   border: 1px solid rgba(235, 230, 222, 0.85);
+
   box-shadow:
     0 4px 6px -1px rgba(23, 20, 15, 0.03),
     0 10px 20px -8px rgba(23, 20, 15, 0.06);
-  color: var(--ink);
-  text-align: center;
+
+  color: #fff;
   text-decoration: none;
+
   overflow: hidden;
-  transform-style: preserve-3d;
+  isolation: isolate;
   will-change: transform, box-shadow;
+
   transition:
     transform 0.5s cubic-bezier(0.165, 0.84, 0.44, 1),
     box-shadow 0.5s cubic-bezier(0.165, 0.84, 0.44, 1),
@@ -177,45 +253,49 @@ onMounted(fetchCategories)
   outline-offset: 4px;
 }
 
-/* ───────── تصویر و محفظه آن ───────── */
+/* تصویر */
 
-.category-image {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: 18px;
-  background: #f3efe9;
-  margin-bottom: 14px;
-  transform-style: preserve-3d;
-  transition:
-    transform 0.5s cubic-bezier(0.165, 0.84, 0.44, 1),
-    box-shadow 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-
-.category-image img {
+.card-cover {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
-  transition: transform 0.65s cubic-bezier(0.165, 0.84, 0.44, 1);
+  z-index: 0;
+
+  transition:
+    transform 0.65s cubic-bezier(0.165, 0.84, 0.44, 1),
+    filter 0.4s ease;
 }
 
-/* هاله تیره نامحسوس پایین تصویر */
-.category-image::after {
-  content: '';
+/* گرادیان پایین کارت */
+
+.card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(23, 20, 15, 0.25) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
+  z-index: 1;
   pointer-events: none;
+
+  background: linear-gradient(
+    to top,
+    rgba(23, 20, 15, 0.78) 0%,
+    rgba(23, 20, 15, 0.35) 32%,
+    transparent 62%
+  );
 }
 
-/* عنوان و فلش هدایت */
+/* عنوان */
+
 .card-title-box {
-  transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  padding: 16px 10px 18px;
+  text-align: center;
 }
 
 .category-card h3 {
@@ -223,11 +303,15 @@ onMounted(fetchCategories)
   align-items: center;
   justify-content: center;
   gap: 0;
+
   margin: 0;
   padding: 0 4px;
-  font-size: 14.5px;
+
+  font-size: 15px;
   font-weight: 700;
-  color: var(--ink);
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+
   transition:
     color 0.3s ease,
     gap 0.3s ease;
@@ -235,67 +319,62 @@ onMounted(fetchCategories)
 
 .category-card h3::after {
   content: '←';
+
   max-width: 0;
   overflow: hidden;
   opacity: 0;
-  color: var(--gold-deep);
+
+  color: var(--gold-light);
   transform: translateX(4px);
+
   transition:
     max-width 0.3s ease,
     opacity 0.3s ease,
     transform 0.3s ease;
 }
 
-/* بازتاب نور شیشه‌ای روی کل کارت */
+/* بازتاب نور */
+
 .card-glare {
   position: absolute;
   inset: -100%;
+  z-index: 2;
+  pointer-events: none;
+
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0) 35%,
-    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0.45) 50%,
     rgba(255, 255, 255, 0) 65%
   );
+
   transform: rotate(30deg) translateY(-80%);
   transition: transform 0.85s cubic-bezier(0.2, 0.8, 0.2, 1);
-  pointer-events: none;
-  z-index: 10;
 }
 
-/* ───────── افکت هاور سه‌بعدی پیشرفته ───────── */
+/* هاور سه‌بعدی و بزرگ شدن کارت */
 
 @media (hover: hover) and (pointer: fine) {
   .category-card:hover {
-    /* بلند شدن و چرخش متعادل در دو محور */
-    transform: translateY(-10px) rotateX(8deg) rotateY(-8deg) scale(1.02);
+    transform: translateY(-10px) rotateX(8deg) rotateY(-8deg) scale(1.08);
+
+    position: relative;
+    z-index: 5;
+
     border-color: rgba(199, 166, 106, 0.4);
+
     box-shadow:
       0 12px 24px -10px rgba(139, 118, 87, 0.25),
       -12px 28px 45px -14px rgba(23, 20, 15, 0.16),
       0 0 0 1px rgba(199, 166, 106, 0.15);
   }
 
-  /* عکس با عمق مشخصی به سمت جلو می‌آید */
-  .category-card:hover .category-image {
-    transform: translateZ(32px);
-    box-shadow: 0 14px 28px -10px rgba(23, 20, 15, 0.28);
-  }
-
-  .category-card:hover .category-image img {
+  .category-card:hover .card-cover {
     transform: scale(1.08);
   }
 
-  .category-card:hover .category-image::after {
-    opacity: 1;
-  }
-
-  /* عنوان بالاتر از صفحه و همراه با المان تصویر شناور می‌شود */
-  .category-card:hover .card-title-box {
-    transform: translateZ(24px);
-  }
-
   .category-card:hover h3 {
-    color: var(--gold-deep);
+    color: var(--gold-light);
     gap: 6px;
   }
 
@@ -305,42 +384,57 @@ onMounted(fetchCategories)
     transform: translateX(0);
   }
 
-  /* حرکت شیک بازتاب نور از گوشه کارت */
   .category-card:hover .card-glare {
     transform: rotate(30deg) translateY(80%);
   }
+
+  /* بلور شدن تصاویر کارت‌های دیگر */
+
+  .categories-slider:has(.category-card:hover) .category-card:not(:hover) .card-cover {
+    filter: blur(3px);
+    transform: scale(1.04);
+  }
 }
 
-/* خاموش کردن ترنزیشن‌ها برای کاربرانی که reduced-motion دارند */
+/* کاهش حرکت */
+
 @media (prefers-reduced-motion: reduce) {
   .category-card,
-  .category-image,
-  .category-image img,
-  .card-title-box,
+  .card-cover,
   .card-glare {
     transition: none !important;
     transform: none !important;
   }
 }
 
+/* تصویر ناموجود */
+
 .image-placeholder {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
   display: grid;
   place-items: center;
+
+  background: #f3efe9;
   color: #a39b8e;
   font-size: 12px;
 }
 
 /* پیام‌ها */
+
 .message {
   max-width: 520px;
   margin: 0 auto;
   padding: 40px 20px;
+
   border: 1px solid rgba(235, 230, 222, 0.9);
   border-radius: 20px;
+
   background: #ffffff;
   box-shadow: 0 12px 30px -15px rgba(23, 20, 15, 0.08);
+
   text-align: center;
   color: #857e72;
 }
@@ -349,24 +443,20 @@ onMounted(fetchCategories)
   color: #c0392b;
 }
 
-/* ریسپانسیو تبلت */
+/* تبلت */
+
 @media (max-width: 1100px) {
-  .categories-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+  .categories-section {
+    width: 90%;
   }
 }
 
-/* ریسپانسیو موبایل */
+/* موبایل */
+
 @media (max-width: 600px) {
   .categories-section {
     width: 90%;
     margin: 45px auto;
-  }
-
-  .categories-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
   }
 
   .section-heading {
@@ -378,17 +468,26 @@ onMounted(fetchCategories)
   }
 
   .category-card {
-    padding: 8px 8px 12px;
     border-radius: 20px;
   }
 
-  .category-image {
-    border-radius: 15px;
-    margin-bottom: 10px;
+  .card-title-box {
+    padding: 14px 6px 16px;
   }
 
   .category-card h3 {
     font-size: 13px;
+  }
+
+  :deep(.swiper-button-next),
+  :deep(.swiper-button-prev) {
+    width: 30px;
+    height: 30px;
+  }
+
+  :deep(.swiper-button-next::after),
+  :deep(.swiper-button-prev::after) {
+    font-size: 11px;
   }
 }
 </style>

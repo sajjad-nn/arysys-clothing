@@ -1,25 +1,46 @@
 <script setup>
-import { computed } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
-
-import Header from './components/Header.vue'
-import Footer from './components/Footer.vue'
-
-const route = useRoute()
-
-const isDashboard = computed(() => {
-  return route.path === '/dashboard' ||
-         route.path.startsWith('/orders') ||
-         route.path.startsWith('/wishlist') ||
-         route.path.startsWith('/addresses') ||
-         route.path.startsWith('/profile')
-})
+import { RouterView } from 'vue-router'
+import Header from './components/header.vue'
+import Footer from './components/footer.vue'
+import MiniCart from './components/cart/MiniCart.vue'
 </script>
 
 <template>
-  <Header v-if="!isDashboard" />
+  <div class="app-layout">
+    <Header />
 
-  <RouterView />
+    <main class="page-content">
+      <RouterView />
+    </main>
 
-  <Footer v-if="!isDashboard" />
+    <Footer />
+    <MiniCart />
+  </div>
 </template>
+
+<style>
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app-layout {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+</style>

@@ -208,9 +208,11 @@ const emit = defineEmits(['switch'])
 
 @media (max-width: 800px) {
 
+   @media (max-width: 800px) {
+
     .auth-panel {
         min-height: 220px;
-        padding: 30px;
+        padding: 25px;
     }
 
     .content {
@@ -218,13 +220,21 @@ const emit = defineEmits(['switch'])
     }
 
     .content h2 {
-        font-size: 26px;
+        font-size: 24px;
         margin-bottom: 8px;
     }
 
-    .content p,
-    .switch-btn {
-        display: none;
+    .content p {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 15px;
     }
+
+    .switch-btn {
+        display: inline-block;
+        padding: 10px 22px;
+        font-size: 13px;
+    }
+}
 }
 </style>

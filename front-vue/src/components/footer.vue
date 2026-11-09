@@ -126,8 +126,8 @@
     radial-gradient(40% 60% at 0% 100%, rgba(199, 166, 106, 0.08) 0%, transparent 70%), #0a0908;
   color: #e5e5e5;
   padding: 72px 8% 0;
-  margin-top: 80px;
-  border-radius: 36px 36px 0 0;
+  /* margin-top: 0px; */
+  /* border-radius: 36px 36px 0 0; */
   font-family: inherit;
 }
 
@@ -397,7 +397,7 @@
 @media (max-width: 576px) {
   .footer {
     padding: 44px 20px 0;
-    margin-top: 50px;
+    /* margin-top: 50px; */
     border-radius: 28px 28px 0 0;
   }
 
@@ -471,4 +471,5 @@
     font-size: 11px;
   }
 }
+
 </style>

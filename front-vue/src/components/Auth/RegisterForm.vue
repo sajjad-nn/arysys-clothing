@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Swal from 'sweetalert2'
+import { setUser } from '@/services/auth'
 
 const router = useRouter()
 
@@ -40,6 +41,8 @@ const register = async () => {
 
     // دریافت کاربر ثبت‌نام‌شده
     const response = await api.get('/api/user')
+
+    setUser(response.data)
     const showSuccess = () => {
       Swal.fire({
         icon: 'success',

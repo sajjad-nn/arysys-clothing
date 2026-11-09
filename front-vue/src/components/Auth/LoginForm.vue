@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Swal from 'sweetalert2'
+import { setUser } from '@/services/auth'
 
 const router = useRouter()
 
@@ -38,9 +39,11 @@ const login = async () => {
 
     // دریافت کاربر لاگین‌شده
     const response = await api.get('/api/user')
+
+    setUser(response.data)
+
     loginSuccess()
     console.log('ورود موفق:', response.data)
-
     // انتقال به داشبورد
     router.push('/dashboard')
   } catch (err) {

@@ -101,11 +101,10 @@ const teamMembers = [
 </script>
 
 <style scoped>
-/* بخش اصلی */
-
+/* بخش اصلی - کاهش فاصله بالا و پایین */
 .about-section {
   width: 100%;
-  padding: 70px 0;
+  padding: 25px 0 35px; /* کاهش شدید پدینگ بالا و پایین */
   color: #17140f;
   font-family: inherit;
   direction: rtl;
@@ -119,15 +118,14 @@ const teamMembers = [
   display: grid;
   direction: ltr;
   grid-template-columns: 1fr 1fr;
-  align-items: stretch;
-  gap: 65px;
+  align-items: center; /* تراز عمودی وسط برای هماهنگی بیشتر */
+  gap: 50px;
 }
 
 /* کاروسل سمت چپ */
-
 .about-visual {
   min-width: 0;
-  min-height: 390px;
+  min-height: 320px;
 
   display: flex;
   align-items: center;
@@ -138,7 +136,7 @@ const teamMembers = [
 
 .team-carousel {
   width: 100%;
-  height: 390px;
+  height: 320px; /* کاهش ارتفاع برای حذف فضای خالی بالا و پایین کاروسل */
 
   display: flex;
   align-items: center;
@@ -149,9 +147,9 @@ const teamMembers = [
 }
 
 .team-ring {
-  --card-width: 145px;
-  --card-height: 185px;
-  --radius: 220px;
+  --card-width: 135px;
+  --card-height: 175px;
+  --radius: 200px;
 
   position: relative;
   width: var(--card-width);
@@ -206,7 +204,7 @@ const teamMembers = [
   right: 0;
 
   width: 100%;
-  padding: 12px 5px;
+  padding: 10px 5px;
 
   text-align: center;
   color: #fff;
@@ -217,7 +215,6 @@ const teamMembers = [
 }
 
 /* انیمیشن چرخش */
-
 @keyframes teamRotate {
   from {
     transform: perspective(1000px) rotateY(0deg);
@@ -229,7 +226,6 @@ const teamMembers = [
 }
 
 /* متن درباره ما */
-
 .about-content {
   direction: rtl;
 
@@ -244,31 +240,29 @@ const teamMembers = [
 .section-label {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
+  gap: 12px;
+  margin-bottom: 15px; /* کاهش فاصله لیبل */
 }
 
 .section-label span {
-  width: 45px;
+  width: 35px;
   height: 2px;
-
   background: linear-gradient(90deg, #e0c48c, #c7a66a);
-
   border-radius: 5px;
 }
 
 .section-label p {
   margin: 0;
   color: #8b7657;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .about-content h2 {
-  margin: 0 0 22px;
+  margin: 0 0 16px; /* کاهش فاصله عناوین */
 
-  font-size: clamp(25px, 2.5vw, 36px);
-  line-height: 1.8;
+  font-size: clamp(24px, 2.3vw, 34px);
+  line-height: 1.6;
   font-weight: 800;
   letter-spacing: -0.7px;
 }
@@ -282,32 +276,31 @@ const teamMembers = [
   margin: 0;
 
   color: #77736d;
-  font-size: 15px;
-  line-height: 2.5;
+  font-size: 14.5px;
+  line-height: 2.2; /* تنظیم فاصله خطوط متن */
   text-align: justify;
 }
 
 /* دکمه ها */
-
 .about-buttons {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
 
-  gap: 14px;
-  margin-top: 35px;
+  gap: 12px;
+  margin-top: 25px; /* کاهش فاصله دکمه‌ها از متن بالا */
 }
 
 .about-btn {
-  min-width: 190px;
-  padding: 13px 22px;
+  min-width: 180px;
+  padding: 11px 20px;
 
   border-radius: 40px;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
 
   text-decoration: none;
   font-size: 13px;
@@ -342,7 +335,7 @@ const teamMembers = [
 
 .btn-arrow,
 .phone-icon {
-  font-size: 18px;
+  font-size: 16px;
   transition: transform 0.3s ease;
 }
 
@@ -355,7 +348,6 @@ const teamMembers = [
 }
 
 /* تبلت */
-
 @media (max-width: 1024px) {
   .about-container {
     width: 90%;
@@ -363,13 +355,13 @@ const teamMembers = [
   }
 
   .team-ring {
-    --card-width: 120px;
-    --card-height: 155px;
-    --radius: 180px;
+    --card-width: 115px;
+    --card-height: 150px;
+    --radius: 170px;
   }
 
   .about-content h2 {
-    font-size: 27px;
+    font-size: 25px;
   }
 
   .about-description {
@@ -377,28 +369,25 @@ const teamMembers = [
   }
 
   .about-btn {
-    min-width: 155px;
+    min-width: 150px;
   }
 }
 
 /* موبایل */
-
 @media (max-width: 768px) {
   .about-section {
-    padding: 45px 0;
+    padding: 20px 0 30px; /* بهینه‌سازی پدینگ در موبایل */
   }
 
   .about-container {
     width: 92%;
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 12px;
   }
-
-  /* کاروسل بالا، متن پایین */
 
   .about-visual {
     grid-row: 1;
-    min-height: 300px;
+    min-height: 260px;
   }
 
   .about-content {
@@ -406,50 +395,49 @@ const teamMembers = [
   }
 
   .team-carousel {
-    height: 300px;
+    height: 260px;
   }
 
   .team-ring {
-    --card-width: 100px;
-    --card-height: 130px;
-    --radius: 145px;
+    --card-width: 95px;
+    --card-height: 125px;
+    --radius: 135px;
   }
 
   .member-overlay {
     font-size: 10px;
-    padding: 8px 3px;
+    padding: 6px 3px;
   }
 
   .section-label {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
   }
 
   .about-content h2 {
-    font-size: 24px;
-    margin-bottom: 15px;
+    font-size: 22px;
+    margin-bottom: 12px;
   }
 
   .about-description {
     font-size: 13px;
-    line-height: 2.3;
+    line-height: 2.1;
   }
 
   .about-buttons {
     width: 100%;
-    margin-top: 25px;
+    margin-top: 20px;
     gap: 10px;
   }
 
   .about-btn {
     flex: 1;
     min-width: 0;
-    padding: 12px 10px;
+    padding: 11px 10px;
     font-size: 11px;
   }
 }
 
 /* موبایل کوچک */
-
 @media (max-width: 380px) {
   .about-buttons {
     flex-direction: column;
@@ -459,8 +447,6 @@ const teamMembers = [
     width: 100%;
   }
 }
-
-/* رعایت تنظیم کاهش حرکت سیستم */
 
 @media (prefers-reduced-motion: reduce) {
   .team-ring {

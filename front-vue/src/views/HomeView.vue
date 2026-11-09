@@ -1,7 +1,9 @@
 <template>
   <!-- <Header /> -->
   <Hero />
+  <Stories />
   <CategoriesSection />
+  
   <SpecialOffers />
   <ProductsSlider />
   <AboutUs />
@@ -14,6 +16,7 @@
 <script setup>
 // import Header from '../components/header.vue'
 import Hero from '../components/hero.vue'
+import Stories from '../components/Stories.vue'
 import CategoriesSection from '../components/CategoriesSection.vue'
 import SpecialOffers from '../components/SpecialOffers.vue'
 import ProductsSlider from '@/components/ProductsSlider.vue'

@@ -13,12 +13,21 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ArticleResource extends Resource
 {
     protected static ?string $model = Article::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
+
+    protected static string|UnitEnum|null $navigationGroup = 'محتوا';
+
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $modelLabel = 'مقاله';
+
+    protected static ?string $pluralModelLabel = 'مقالات';
 
     protected static ?string $recordTitleAttribute = 'title';
 

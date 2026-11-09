@@ -1,6 +1,8 @@
+```vue
 <template>
   <div class="shop-page">
     <main class="shop-container">
+
       <!-- عنوان فروشگاه -->
       <section class="shop-heading">
         <div class="heading-content">
@@ -23,7 +25,9 @@
 
       <div v-else-if="error" class="message error">
         <p>{{ error }}</p>
-        <button class="retry-btn" @click="fetchProducts">تلاش مجدد</button>
+        <button class="retry-btn" @click="fetchProducts">
+          تلاش مجدد
+        </button>
       </div>
 
       <div v-else-if="products.length === 0" class="message">
@@ -32,34 +36,47 @@
 
       <!-- محصولات -->
       <section v-else class="products-grid">
-        <article v-for="product in products" :key="product.id" class="product-card">
-          <!-- تصویر محصول یا تنوع انتخاب‌شده -->
-          <div class="product-media">
-            <img
-              v-if="getCurrentImage(product)"
-              :key="getCurrentImage(product)"
-              :src="imageUrl(getCurrentImage(product))"
-              :alt="product.name"
-              class="product-image"
-              loading="lazy"
-              @error="onImageError($event, product)"
-            />
+        <article
+          v-for="product in products"
+          :key="product.id"
+          class="product-card"
+        >
 
-            <div v-else class="no-image">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-              </svg>
-              <span>فاقد تصویر</span>
-            </div>
+          <!-- تصویر محصول -->
+          <div class="product-media">
+
+            <button
+              class="product-image-link"
+              type="button"
+              @click="goToProduct(product)"
+              :aria-label="`مشاهده ${product.name}`"
+            >
+              <img
+                v-if="getCurrentImage(product)"
+                :key="getCurrentImage(product)"
+                :src="imageUrl(getCurrentImage(product))"
+                :alt="product.name"
+                class="product-image"
+                loading="lazy"
+                @error="onImageError($event, product)"
+              />
+
+              <div v-else class="no-image">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span>فاقد تصویر</span>
+              </div>
+            </button>
 
             <div class="media-badges">
               <span v-if="hasDiscount(product)" class="discount-badge">
@@ -69,16 +86,30 @@
           </div>
 
           <div class="product-info">
+
             <span class="category-name">
               {{ product.category?.name || 'کالکشن اختصاصی' }}
             </span>
 
-            <h2 :title="product.name">{{ product.name }}</h2>
+            <!-- نام محصول -->
+            <button
+              class="product-title-link"
+              type="button"
+              @click="goToProduct(product)"
+              :title="product.name"
+            >
+              {{ product.name }}
+            </button>
 
             <!-- انتخاب تنوع -->
             <div v-if="hasVariants(product)" class="variant-options">
-              <div class="variant-field" v-if="getColors(product).length">
+
+              <div
+                class="variant-field"
+                v-if="getColors(product).length"
+              >
                 <label :for="`color-${product.id}`">رنگ</label>
+
                 <div class="select-wrapper">
                   <select
                     :id="`color-${product.id}`"
@@ -86,15 +117,23 @@
                     @change="onColorChange(product)"
                     class="variant-select"
                   >
-                    <option v-for="color in getColors(product)" :key="color" :value="color">
+                    <option
+                      v-for="color in getColors(product)"
+                      :key="color"
+                      :value="color"
+                    >
                       {{ color }}
                     </option>
                   </select>
                 </div>
               </div>
 
-              <div class="variant-field" v-if="getSizes(product).length">
+              <div
+                class="variant-field"
+                v-if="getSizes(product).length"
+              >
                 <label :for="`size-${product.id}`">سایز</label>
+
                 <div class="select-wrapper">
                   <select
                     :id="`size-${product.id}`"
@@ -102,23 +141,34 @@
                     @change="onSizeChange(product)"
                     class="variant-select"
                   >
-                    <option v-for="size in getSizes(product)" :key="size" :value="size">
+                    <option
+                      v-for="size in getSizes(product)"
+                      :key="size"
+                      :value="size"
+                    >
                       {{ size }}
                     </option>
                   </select>
                 </div>
               </div>
+
             </div>
 
-            <!-- قیمت و وضعیت موجودی -->
+            <!-- قیمت و موجودی -->
             <div class="card-footer-area">
+
               <div class="price-area">
-                <div v-if="getCurrentPricing(product).discounted" class="old-price">
+                <div
+                  v-if="getCurrentPricing(product).discounted"
+                  class="old-price"
+                >
                   {{ formatPrice(getCurrentPricing(product).original) }}
                 </div>
 
                 <div class="current-price">
-                  <span class="amount">{{ formatPrice(getCurrentPricing(product).current) }}</span>
+                  <span class="amount">
+                    {{ formatPrice(getCurrentPricing(product).current) }}
+                  </span>
                   <span class="unit">تومان</span>
                 </div>
               </div>
@@ -136,13 +186,16 @@
                   }}
                 </span>
               </div>
+
             </div>
 
+            <!-- افزودن به سبد خرید -->
             <button
               class="add-to-cart-btn"
               :disabled="
                 getCurrentStock(product) <= 0 ||
-                (hasVariants(product) && !getSelectedVariant(product))
+                (hasVariants(product) && !getSelectedVariant(product)) ||
+                getCurrentPricing(product).current === null
               "
               @click="addToCart(product)"
             >
@@ -154,23 +207,39 @@
                 stroke="currentColor"
                 stroke-width="2"
               >
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <path d="M16 10a4 4 0 0 1-8 0"></path>
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
+
               <span>
                 {{ getCurrentStock(product) > 0 ? 'افزودن به سبد خرید' : 'اتمام موجودی' }}
               </span>
             </button>
+
           </div>
         </article>
       </section>
+
+      <!-- پیام موفقیت -->
+      <transition name="toast">
+        <div v-if="toastMessage" class="cart-toast">
+          <span class="toast-check">✓</span>
+          {{ toastMessage }}
+        </div>
+      </transition>
+
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart'
+
+const router = useRouter()
+const cart = useCartStore()
 
 const API_BASE = 'http://127.0.0.1:8000'
 
@@ -178,10 +247,14 @@ const products = ref([])
 const loading = ref(true)
 const error = ref('')
 const selectedVariants = ref({})
+const toastMessage = ref('')
 
+let toastTimer = null
+
+// فیلتر تنوع‌های فعال
 function getVariants(product) {
   return (product.variants || []).filter(
-    (variant) => variant.is_active !== false && variant.is_active !== 0,
+    variant => variant.is_active !== false && variant.is_active !== 0
   )
 }
 
@@ -189,51 +262,55 @@ function hasVariants(product) {
   return getVariants(product).length > 0
 }
 
+// رنگ‌های محصول
 function getColors(product) {
   return [
     ...new Set(
       getVariants(product)
-        .map((variant) => variant.color)
-        .filter((color) => color !== null && color !== undefined && color !== ''),
-    ),
+        .map(variant => variant.color)
+        .filter(color => color !== null && color !== undefined && color !== '')
+    )
   ]
 }
 
+// سایزهای قابل انتخاب با توجه به رنگ
 function getSizes(product) {
   const selected = selectedVariants.value[product.id]
   const variants = getVariants(product)
 
   const matchingColor = selected?.color
-    ? variants.filter((variant) => variant.color === selected.color)
+    ? variants.filter(variant => variant.color === selected.color)
     : variants
 
   return [
     ...new Set(
       matchingColor
-        .map((variant) => variant.size)
-        .filter((size) => size !== null && size !== undefined && size !== ''),
-    ),
+        .map(variant => variant.size)
+        .filter(size => size !== null && size !== undefined && size !== '')
+    )
   ]
 }
 
+// تنوع انتخاب‌شده
 function getSelectedVariant(product) {
   const selected = selectedVariants.value[product.id]
 
   if (!selected) return null
 
-  const variants = getVariants(product)
-
   return (
-    variants.find((variant) => {
-      const colorMatches = !selected.color || variant.color === selected.color
+    getVariants(product).find(variant => {
+      const colorMatches =
+        !selected.color || variant.color === selected.color
 
-      const sizeMatches = !selected.size || variant.size === selected.size
+      const sizeMatches =
+        !selected.size || variant.size === selected.size
 
       return colorMatches && sizeMatches
     }) || null
   )
 }
 
+// مقداردهی اولیه رنگ و سایز
 function initializeVariant(product) {
   const variants = getVariants(product)
 
@@ -243,12 +320,13 @@ function initializeVariant(product) {
 
   selectedVariants.value[product.id] = {
     color: first.color || '',
-    size: first.size || '',
+    size: first.size || ''
   }
 
   syncVariantSelection(product)
 }
 
+// هماهنگ کردن انتخاب‌ها
 function syncVariantSelection(product) {
   const selected = selectedVariants.value[product.id]
 
@@ -256,17 +334,19 @@ function syncVariantSelection(product) {
 
   const variants = getVariants(product)
 
-  const colorVariants = variants.filter(
-    (variant) => !selected.color || variant.color === selected.color,
-  )
-
-  if (selected.color && !variants.some((variant) => variant.color === selected.color)) {
+  if (
+    selected.color &&
+    !variants.some(variant => variant.color === selected.color)
+  ) {
     selected.color = variants[0]?.color || ''
   }
 
-  const validSizes = colorVariants
-    .filter((variant) => !selected.color || variant.color === selected.color)
-    .map((variant) => variant.size)
+  const matchingVariants = variants.filter(
+    variant => !selected.color || variant.color === selected.color
+  )
+
+  const validSizes = matchingVariants
+    .map(variant => variant.size)
     .filter(Boolean)
 
   if (selected.size && !validSizes.includes(selected.size)) {
@@ -274,26 +354,25 @@ function syncVariantSelection(product) {
   }
 
   if (!selected.color && selected.size) {
-    const matching = variants.find((v) => v.size === selected.size)
-    if (matching?.color) selected.color = matching.color
+    const matching = variants.find(
+      variant => variant.size === selected.size
+    )
+
+    if (matching?.color) {
+      selected.color = matching.color
+    }
   }
 }
 
 function onColorChange(product) {
-  const selected = selectedVariants.value[product.id]
-  const variants = getVariants(product)
-
-  const matching = variants.filter((variant) => variant.color === selected.color)
-
-  if (!matching.some((variant) => variant.size === selected.size)) {
-    selected.size = matching[0]?.size || ''
-  }
+  syncVariantSelection(product)
 }
 
 function onSizeChange(product) {
   syncVariantSelection(product)
 }
 
+// قیمت محصول یا تنوع
 function getCurrentPricing(product) {
   const variant = getSelectedVariant(product)
   const item = variant || product
@@ -301,9 +380,11 @@ function getCurrentPricing(product) {
   const original = item.price
   const discount = item.discount_price
 
-  const hasOriginal = original !== null && original !== undefined && original !== ''
+  const hasOriginal =
+    original !== null && original !== undefined && original !== ''
 
-  const hasDiscount = discount !== null && discount !== undefined && discount !== ''
+  const hasDiscount =
+    discount !== null && discount !== undefined && discount !== ''
 
   const originalNumber = Number(original)
   const discountNumber = Number(discount)
@@ -317,9 +398,17 @@ function getCurrentPricing(product) {
     discountNumber < originalNumber
 
   return {
-    original: hasOriginal ? originalNumber : null,
-    current: discounted ? discountNumber : hasOriginal ? originalNumber : null,
-    discounted,
+    original: hasOriginal && Number.isFinite(originalNumber)
+      ? originalNumber
+      : null,
+
+    current: discounted
+      ? discountNumber
+      : hasOriginal && Number.isFinite(originalNumber)
+        ? originalNumber
+        : null,
+
+    discounted
   }
 }
 
@@ -332,23 +421,34 @@ function getDiscountPercent(product) {
 
   if (!pricing.discounted || !pricing.original) return 0
 
-  return Math.round(((pricing.original - pricing.current) / pricing.original) * 100)
+  return Math.round(
+    ((pricing.original - pricing.current) / pricing.original) * 100
+  )
 }
 
+// موجودی تنوع یا محصول
 function getCurrentStock(product) {
-  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+  const variant = hasVariants(product)
+    ? getSelectedVariant(product)
+    : null
 
-  const stock = hasVariants(product) ? variant?.stock : product.stock
+  const stock = hasVariants(product)
+    ? variant?.stock
+    : product.stock
 
   return Math.max(0, Number(stock) || 0)
 }
 
+// تصویر تنوع یا تصویر اصلی
 function getCurrentImage(product) {
-  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+  const variant = hasVariants(product)
+    ? getSelectedVariant(product)
+    : null
 
   return variant?.image || product.image || ''
 }
 
+// ساخت آدرس تصویر
 function imageUrl(image) {
   if (!image || typeof image !== 'string') return ''
 
@@ -358,20 +458,29 @@ function imageUrl(image) {
     return value
   }
 
-  const cleanPath = value.replace(/^\/+/, '').replace(/^storage\//, '')
+  const cleanPath = value
+    .replace(/^\/+/, '')
+    .replace(/^storage\//, '')
 
   return `${API_BASE}/storage/${cleanPath}`
 }
 
+// اگر تصویر تنوع بارگذاری نشد
 function onImageError(event, product) {
   const imageElement = event.target
-  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+
+  const variant = hasVariants(product)
+    ? getSelectedVariant(product)
+    : null
 
   if (variant?.image && product.image) {
     const variantUrl = imageUrl(variant.image)
     const mainUrl = imageUrl(product.image)
 
-    if (imageElement.dataset.fallbackUsed !== 'true' && variantUrl !== mainUrl) {
+    if (
+      imageElement.dataset.fallbackUsed !== 'true' &&
+      variantUrl !== mainUrl
+    ) {
       imageElement.dataset.fallbackUsed = 'true'
       imageElement.src = mainUrl
       return
@@ -381,6 +490,7 @@ function onImageError(event, product) {
   imageElement.style.display = 'none'
 }
 
+// فرمت قیمت
 function formatPrice(price) {
   if (price === null || price === undefined || price === '') {
     return 'قیمت ثبت نشده'
@@ -388,11 +498,14 @@ function formatPrice(price) {
 
   const number = Number(price)
 
-  if (!Number.isFinite(number)) return 'قیمت ثبت نشده'
+  if (!Number.isFinite(number)) {
+    return 'قیمت ثبت نشده'
+  }
 
   return number.toLocaleString('fa-IR')
 }
 
+// دریافت محصولات
 async function fetchProducts() {
   loading.value = true
   error.value = ''
@@ -406,39 +519,105 @@ async function fetchProducts() {
 
     const data = await response.json()
 
-    products.value = Array.isArray(data) ? data : (data.data ?? [])
+    products.value = Array.isArray(data)
+      ? data
+      : (data.data ?? [])
 
     selectedVariants.value = {}
 
     products.value.forEach(initializeVariant)
+
   } catch (err) {
-    error.value = err.message || 'ارتباط با سرور برقرار نشد.'
+    error.value =
+      err.message || 'ارتباط با سرور برقرار نشد.'
   } finally {
     loading.value = false
   }
 }
 
+// رفتن به صفحه محصول تکی
+function goToProduct(product) {
+  router.push({
+    name: 'product-detail',
+    params: {
+      id: product.id
+    }
+  })
+}
+
+// نمایش پیام موفقیت
+function showToast(message) {
+  toastMessage.value = message
+
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+  }
+
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 2500)
+}
+
+// افزودن محصول به سبد خرید از طریق Pinia
 function addToCart(product) {
-  const variant = hasVariants(product) ? getSelectedVariant(product) : null
+  const variant = hasVariants(product)
+    ? getSelectedVariant(product)
+    : null
 
   if (hasVariants(product) && !variant) {
-    alert('لطفاً یک ترکیب رنگ و سایز معتبر انتخاب کن.')
+    showToast('لطفاً رنگ و سایز محصول را انتخاب کن.')
     return
   }
 
-  if (getCurrentStock(product) <= 0) {
-    alert('این محصول در حال حاضر ناموجود است.')
+  const stock = getCurrentStock(product)
+
+  if (stock <= 0) {
+    showToast('این محصول موجود نیست.')
     return
   }
 
-  const details = variant
-    ? `\nرنگ: ${variant.color || 'انتخاب نشده'}\nسایز: ${variant.size || 'انتخاب نشده'}`
-    : ''
+  const pricing = getCurrentPricing(product)
 
-  alert(`محصول «${product.name}» انتخاب شد.${details}`)
+  if (pricing.current === null) {
+    showToast('قیمت این محصول ثبت نشده است.')
+    return
+  }
+
+  const productData = {
+    id: product.id,
+    product_id: product.id,
+    variant_id: variant?.id ?? null,
+
+    name: product.name,
+    image: getCurrentImage(product),
+
+    price: pricing.original,
+    discount_price: pricing.discounted
+      ? pricing.current
+      : null,
+
+    final_price: pricing.current,
+
+    color: variant?.color || '',
+    size: variant?.size || '',
+
+    quantity: 1,
+    stock
+  }
+
+  // استفاده از استور مشترک سبد خرید
+  cart.addToCart(productData)
+
+  showToast(`«${product.name}» به سبد خرید اضافه شد.`)
 }
 
 onMounted(fetchProducts)
+
+onBeforeUnmount(() => {
+  if (toastTimer) {
+    clearTimeout(toastTimer)
+  }
+})
 </script>
 
 <style scoped>
@@ -511,6 +690,7 @@ onMounted(fetchProducts)
   font-weight: 700;
   color: #18181b;
 }
+
 /* گرید محصولات */
 .products-grid {
   display: grid;
@@ -539,7 +719,7 @@ onMounted(fetchProducts)
   box-shadow: 0 20px 32px -8px rgba(0, 0, 0, 0.08);
 }
 
-/* بخش مدیا و تصویر */
+/* تصویر محصول */
 .product-media {
   position: relative;
   overflow: hidden;
@@ -548,7 +728,19 @@ onMounted(fetchProducts)
   background: #f4f4f5;
 }
 
+.product-image-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+}
+
 .product-image {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -579,6 +771,7 @@ onMounted(fetchProducts)
   flex-direction: column;
   gap: 6px;
   z-index: 2;
+  pointer-events: none;
 }
 
 .discount-badge {
@@ -592,7 +785,7 @@ onMounted(fetchProducts)
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
-/* جزییات کارت */
+/* جزئیات کارت */
 .product-info {
   display: flex;
   flex-direction: column;
@@ -609,20 +802,32 @@ onMounted(fetchProducts)
   text-transform: uppercase;
 }
 
-.product-info h2 {
+/* نام محصول */
+.product-title-link {
+  display: -webkit-box;
+  width: 100%;
+  min-height: 45px;
+  padding: 0;
+  margin: 0 0 16px;
+  border: 0;
+  background: transparent;
+  color: #18181b;
+  font-family: inherit;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.5;
-  color: #18181b;
-  margin: 0 0 16px;
-  min-height: 45px;
-  display: -webkit-box;
+  text-align: right;
+  cursor: pointer;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* سلکتورها و مشخصه‌ها */
+.product-title-link:hover {
+  color: #a38253;
+}
+
+/* انتخاب رنگ و سایز */
 .variant-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -654,11 +859,10 @@ onMounted(fetchProducts)
   border-radius: 8px;
   padding: 6px 10px;
   font-size: 12px;
+  font-family: inherit;
   color: #27272a;
   outline: none;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -711,7 +915,7 @@ onMounted(fetchProducts)
   color: #71717a;
 }
 
-/* نشانگر موجودی */
+/* وضعیت موجودی */
 .stock-status {
   display: inline-flex;
   align-items: center;
@@ -761,6 +965,7 @@ onMounted(fetchProducts)
   color: #ffffff;
   border: 1px solid #18181b;
   border-radius: 12px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -786,7 +991,7 @@ onMounted(fetchProducts)
   box-shadow: none;
 }
 
-/* وضعیت‌های لودینگ و ارور */
+/* پیام‌ها */
 .message {
   padding: 80px 20px;
   text-align: center;
@@ -807,6 +1012,7 @@ onMounted(fetchProducts)
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
+  font-family: inherit;
   transition: opacity 0.2s;
 }
 
@@ -829,6 +1035,47 @@ onMounted(fetchProducts)
   to {
     transform: rotate(360deg);
   }
+}
+
+/* پیام افزودن به سبد خرید */
+.cart-toast {
+  position: fixed;
+  bottom: 28px;
+  right: 50%;
+  transform: translateX(50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  background: #18181b;
+  color: white;
+  border-radius: 12px;
+  font-size: 13px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+
+.toast-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 800;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(50%, 15px);
 }
 
 /* ریسپانسیو */
@@ -860,7 +1107,7 @@ onMounted(fetchProducts)
     padding: 14px;
   }
 
-  .product-info h2 {
+  .product-title-link {
     font-size: 13.5px;
     min-height: 40px;
     margin-bottom: 12px;
@@ -889,3 +1136,4 @@ onMounted(fetchProducts)
   }
 }
 </style>
+```
