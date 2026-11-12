@@ -6,9 +6,9 @@ const containerRef = ref(null)
 const womenRef = ref(null)
 const menRef = ref(null)
 
-const GAP = 8
+const GAP = 12
 const RADIUS = 28
-const INNER_RADIUS = 10
+const INNER_RADIUS = 24
 const STEP_WIDTH = 120
 const STEP_RATIO = 0.5
 
@@ -69,25 +69,23 @@ function updateShapes() {
   const stepY = Math.round(H * STEP_RATIO)
 
   // بنر مردانه (سمت چپ)
-  const left = roundedPath([
-    [0, 0, RADIUS],
-    [xUpper - half, 0, 0],
-    [xUpper - half, stepY, INNER_RADIUS],
-    [xLower - half, stepY, INNER_RADIUS],
-    [xLower - half, H, 0],
-    [0, H, RADIUS],
-  ])
+ const left = roundedPath([
+  [0, 0, RADIUS],
+  [xUpper - half, 0, INNER_RADIUS],
+  [xUpper - half, stepY, INNER_RADIUS],
+  [xLower - half, stepY, INNER_RADIUS],
+  [xLower - half, H, INNER_RADIUS],
+  [0, H, RADIUS],
+])
 
-  // بنر زنانه (سمت راست)
-  const right = roundedPath([
-    [xUpper + half, 0, 0],
-    [W, 0, RADIUS],
-    [W, H, RADIUS],
-    [xLower + half, H, 0],
-    [xLower + half, stepY - GAP, INNER_RADIUS],
-    [xUpper + half, stepY - GAP, INNER_RADIUS],
-  ])
-
+const right = roundedPath([
+  [xUpper + half, 0, INNER_RADIUS],
+  [W, 0, RADIUS],
+  [W, H, RADIUS],
+  [xLower + half, H, INNER_RADIUS],
+  [xLower + half, stepY - GAP, INNER_RADIUS],
+  [xUpper + half, stepY - GAP, INNER_RADIUS],
+])
   men.style.clipPath = `path('${left}')`
   women.style.clipPath = `path('${right}')`
 }
