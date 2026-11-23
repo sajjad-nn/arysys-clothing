@@ -221,17 +221,20 @@ async function fetchSlides() {
 
   try {
     const response = await api.get('/api/hero-slides')
+    const rawSlides = Array.isArray(response.data) ? response.data : (response.data?.data ?? [])
 
-    slides.value = response.data.map((slide) => ({
-      id: slide.id,
-      image: slide.image_url,
-      title: slide.title || '',
-      subtitle: slide.subtitle || '',
-      heading: slide.title || '',
-      highlight: slide.highlighted_title || '',
-      description: slide.description || '',
-      sortOrder: slide.sort_order ?? 0,
-    }))
+    slides.value = rawSlides
+      .map((slide) => ({
+        id: slide.id,
+        image: slide.image_url,
+        title: slide.title || '',
+        subtitle: slide.subtitle || '',
+        heading: slide.title || '',
+        highlight: slide.highlighted_title || '',
+        description: slide.description || '',
+        sortOrder: Number(slide.sort_order ?? 0),
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
 
     activeIndex.value = 0
   } catch (err) {
@@ -327,7 +330,7 @@ function closeModal() {
   if (!selectedSlide.value) return
 
   selectedSlide.value = null
-  document.body.style.overflow = previousBodyOverflow
+  document.body.style.overflow = previousBodyOverflow || ''
 
   startAutoplay()
 }
@@ -363,10 +366,14 @@ function onTouchEnd(event) {
 }
 
 // تعیین موقعیت تصاویر در کاروسل
-// فقط اسلاید فعلی، بعدی و قبلی دیده می‌شوند؛ بقیه در همان سمتی که هستند مخفی می‌شوند
-// تا حرکت‌ها پیوسته و بدون عبور از وسط باشد
 function getPosition(index) {
   const total = slides.value.length
+  if (total <= 1) return 'center'
+
+  if (total === 2) {
+    return index === activeIndex.value ? 'center' : 'left'
+  }
+
   const d = (((index - activeIndex.value) % total) + total) % total
 
   if (d === 0) return 'center'
@@ -391,7 +398,9 @@ onUnmounted(() => {
   stopAutoplay()
   window.removeEventListener('keydown', handleKeydown)
 
-  document.body.style.overflow = previousBodyOverflow
+  if (selectedSlide.value) {
+    document.body.style.overflow = previousBodyOverflow || ''
+  }
 })
 </script>
 
@@ -696,14 +705,12 @@ onUnmounted(() => {
   transform: translate3d(15%, -50%, -60px) scale(0.77) rotateY(-10deg);
 }
 
-/* اسلایدهای اضافه: در همان سمت خودشان کنار می‌روند و محو می‌شوند */
 .slide-card.hidden-left,
 .slide-card.hidden-right {
   z-index: 1;
   opacity: 0;
   pointer-events: none;
   filter: grayscale(100%) brightness(0.4);
-  /* محو شدن سریع‌تر از حرکت، تا جابه‌جایی پشت صحنه دیده نشود */
   transition:
     transform 0.85s cubic-bezier(0.22, 0.85, 0.25, 1),
     opacity 0.3s ease,
@@ -882,7 +889,6 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
 
-/* نورپردازی تار از روی خود عکس */
 .modal-bg {
   position: absolute;
   inset: -10%;
@@ -920,7 +926,6 @@ onUnmounted(() => {
     inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* درخشش گوشه‌ی شیشه */
 .modal-content::before {
   content: '';
   position: absolute;
@@ -1141,7 +1146,6 @@ onUnmounted(() => {
   transform: translateY(30px) scale(0.95);
 }
 
-/* اگر مرورگر backdrop-filter را پشتیبانی نکند، پس‌زمینه کدرتر می‌شود */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .modal-content {
     background: rgba(24, 24, 24, 0.92);
@@ -1385,7 +1389,6 @@ onUnmounted(() => {
     display: none;
   }
 
-  /* پنجره جزئیات در موبایل */
   .slide-modal {
     padding: 12px;
     align-items: center;

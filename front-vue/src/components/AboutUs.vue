@@ -4,39 +4,20 @@
       <!-- سمت چپ: کاروسل سه‌بعدی تصاویر -->
       <div class="about-visual">
         <div class="team-carousel">
-          <!-- وضعیت بارگذاری -->
-          <div v-if="loading" class="carousel-status">در حال بارگذاری تصاویر...</div>
-
-          <!-- خطای دریافت اطلاعات -->
-          <div v-else-if="error" class="carousel-status">
-            {{ error }}
-          </div>
-
-          <!-- نمایش تصاویر -->
-          <div
-            v-else-if="teamMembers.length"
-            class="team-ring"
-            :style="{ '--count': teamMembers.length }"
-          >
+          <div class="team-ring">
             <article
               v-for="(member, index) in teamMembers"
-              :key="member.id"
+              :key="member.name"
               class="team-item"
-              :style="{
-                '--rot': index,
-                '--angle': `${(360 / teamMembers.length) * index}deg`,
-              }"
+              :style="{ '--rot': index }"
             >
-              <img :src="member.image" :alt="member.name" loading="lazy" decoding="async" />
+              <img :src="member.image" :alt="member.name" loading="eager" @error="onImageError" />
 
               <div class="member-overlay">
                 <span>{{ member.name }}</span>
               </div>
             </article>
           </div>
-
-          <!-- زمانی که تصویری ثبت نشده -->
-          <div v-else class="carousel-status">تصویری برای نمایش ثبت نشده است.</div>
         </div>
       </div>
 
@@ -76,51 +57,58 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import api from '../services/api'
 
-// اطلاعات تصاویر اسلایدر
-const teamMembers = ref([])
+// تصاویر موقت از تصاویر موجود پروژه
+import womanImage from '../asset/images/woman.webp'
+import menImage from '../asset/images/men.webp'
+import modernImage from '../asset/images/modern.webp'
 
-// وضعیت دریافت اطلاعات
-const loading = ref(true)
-const error = ref('')
+const teamMembers = [
+  {
+    name: 'عضو اول',
+    image: womanImage,
+  },
+  {
+    name: 'عضو دوم',
+    image: menImage,
+  },
+  {
+    name: 'عضو سوم',
+    image: modernImage,
+  },
+  {
+    name: 'عضو چهارم',
+    image: womanImage,
+  },
+  {
+    name: 'عضو پنجم',
+    image: menImage,
+  },
+  {
+    name: 'عضو ششم',
+    image: modernImage,
+  },
+  {
+    name: 'عضو هفتم',
+    image: womanImage,
+  },
+  {
+    name: 'عضو هشتم',
+    image: menImage,
+  },
+]
 
-// دریافت تصاویر از API
-const fetchAboutSlides = async () => {
-  loading.value = true
-  error.value = ''
-
-  try {
-    const response = await api.get('/api/about-slides')
-
-    teamMembers.value = response.data.map((slide) => ({
-      id: slide.id,
-      name: slide.name,
-      image: slide.image_url,
-      sortOrder: slide.sort_order,
-    }))
-  } catch (err) {
-    console.error('خطا در دریافت اسلایدر درباره ما:', err)
-
-    error.value = 'دریافت تصاویر با مشکل مواجه شد.'
-  } finally {
-    loading.value = false
-  }
+function onImageError(event) {
+  event.target.style.display = 'none'
 }
-
-// اجرای درخواست هنگام بارگذاری کامپوننت
-onMounted(() => {
-  fetchAboutSlides()
-})
 </script>
 
 <style scoped>
-/* بخش اصلی */
+/* بخش اصلی - کاهش فاصله بالا و پایین */
 .about-section {
   width: 100%;
-  padding: 25px 0 35px;
+  padding: 25px 0 35px; /* کاهش شدید پدینگ بالا و پایین */
   color: #17140f;
   font-family: inherit;
   direction: rtl;
@@ -134,7 +122,7 @@ onMounted(() => {
   display: grid;
   direction: ltr;
   grid-template-columns: 1fr 1fr;
-  align-items: center;
+  align-items: center; /* تراز عمودی وسط برای هماهنگی بیشتر */
   gap: 50px;
 }
 
@@ -152,7 +140,7 @@ onMounted(() => {
 
 .team-carousel {
   width: 100%;
-  height: 320px;
+  height: 320px; /* کاهش ارتفاع برای حذف فضای خالی بالا و پایین کاروسل */
 
   display: flex;
   align-items: center;
@@ -162,7 +150,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* حلقه سه‌بعدی */
 .team-ring {
   --card-width: 135px;
   --card-height: 175px;
@@ -176,12 +163,10 @@ onMounted(() => {
   animation: teamRotate 22s linear infinite;
 }
 
-/* توقف چرخش هنگام قرار گرفتن موس */
 .team-ring:hover {
   animation-play-state: paused;
 }
 
-/* کارت تصاویر */
 .team-item {
   position: absolute;
   top: 0;
@@ -198,12 +183,11 @@ onMounted(() => {
 
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.16);
 
-  transform: rotateY(var(--angle)) translateZ(var(--radius));
+  transform: rotateY(calc(var(--rot) * 45deg)) translateZ(var(--radius));
 
   backface-visibility: visible;
 }
 
-/* تصاویر */
 .team-item img {
   width: 100%;
   height: 100%;
@@ -218,7 +202,6 @@ onMounted(() => {
   transform: scale(1.1);
 }
 
-/* نام روی تصاویر */
 .member-overlay {
   position: absolute;
   bottom: 0;
@@ -233,15 +216,6 @@ onMounted(() => {
   font-weight: 700;
 
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-}
-
-/* وضعیت بارگذاری و خطا */
-.carousel-status {
-  color: #a68a5b;
-  font-size: 13px;
-  text-align: center;
-  padding: 20px;
-  direction: rtl;
 }
 
 /* انیمیشن چرخش */
@@ -267,20 +241,17 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* برچسب درباره ما */
 .section-label {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 15px;
+  margin-bottom: 15px; /* کاهش فاصله لیبل */
 }
 
 .section-label span {
   width: 35px;
   height: 2px;
-
   background: linear-gradient(90deg, #e0c48c, #c7a66a);
-
   border-radius: 5px;
 }
 
@@ -291,9 +262,8 @@ onMounted(() => {
   font-weight: 700;
 }
 
-/* عنوان */
 .about-content h2 {
-  margin: 0 0 16px;
+  margin: 0 0 16px; /* کاهش فاصله عناوین */
 
   font-size: clamp(24px, 2.3vw, 34px);
   line-height: 1.6;
@@ -305,25 +275,24 @@ onMounted(() => {
   color: #a68a5b;
 }
 
-/* توضیحات */
 .about-description {
   max-width: 620px;
   margin: 0;
 
   color: #77736d;
   font-size: 14.5px;
-  line-height: 2.2;
+  line-height: 2.2; /* تنظیم فاصله خطوط متن */
   text-align: justify;
 }
 
-/* دکمه‌ها */
+/* دکمه ها */
 .about-buttons {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
 
   gap: 12px;
-  margin-top: 25px;
+  margin-top: 25px; /* کاهش فاصله دکمه‌ها از متن بالا */
 }
 
 .about-btn {
@@ -344,7 +313,6 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-/* دکمه اصلی */
 .primary-btn {
   background: #17140f;
   color: #fff;
@@ -357,7 +325,6 @@ onMounted(() => {
   box-shadow: 0 8px 18px rgba(139, 118, 87, 0.2);
 }
 
-/* دکمه تماس */
 .secondary-btn {
   background: transparent;
   color: #a68a5b;
@@ -370,7 +337,6 @@ onMounted(() => {
   transform: translateY(-3px);
 }
 
-/* آیکون‌ها */
 .btn-arrow,
 .phone-icon {
   font-size: 16px;
@@ -414,7 +380,7 @@ onMounted(() => {
 /* موبایل */
 @media (max-width: 768px) {
   .about-section {
-    padding: 20px 0 30px;
+    padding: 20px 0 30px; /* بهینه‌سازی پدینگ در موبایل */
   }
 
   .about-container {
@@ -486,15 +452,9 @@ onMounted(() => {
   }
 }
 
-/* کاهش حرکت برای کاربرانی که این تنظیم را فعال کرده‌اند */
 @media (prefers-reduced-motion: reduce) {
   .team-ring {
     animation: none;
-  }
-
-  .team-item img,
-  .about-btn {
-    transition: none;
   }
 }
 </style>
