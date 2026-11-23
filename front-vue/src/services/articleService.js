@@ -1,3 +1,4 @@
+
 import api from './api'
 
 const getArticles = async () => {
@@ -10,7 +11,27 @@ const getArticle = async (slug) => {
     return response.data
 }
 
+// دریافت نظرات مقاله
+const getComments = async (articleId, page = 1) => {
+    const response = await api.get(`/api/articles/${articleId}/comments`, {
+        params: { page },
+    })
+
+    return response.data
+}
+
+// ثبت نظر جدید
+const addComment = async (articleId, body) => {
+    const response = await api.post(`/api/articles/${articleId}/comments`, {
+        body,
+    })
+
+    return response.data
+}
+
 export default {
     getArticles,
     getArticle,
+    getComments,
+    addComment,
 }

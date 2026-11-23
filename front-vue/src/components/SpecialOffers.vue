@@ -2,127 +2,205 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
-import api from '../services/api'
+import api, { API_BASE } from '../services/api'
 
 const cartStore = useCartStore()
+
+const normalizedApiBase = (API_BASE || '').trim().replace(/\/+$/, '')
 
 const rawProducts = ref([])
 const isLoading = ref(true)
 const hasError = ref(false)
+const brokenImages = ref({})
 
 const trackRef = ref(null)
 const activeSlideIndex = ref(0)
 
 let timerId = null
 
-// دریافت لیست محصولات از API
+// دریافت محصولات
 const loadOfferProducts = async () => {
   try {
     isLoading.value = true
     hasError.value = false
+    brokenImages.value = {}
 
     const res = await api.get('/api/products')
-    rawProducts.value = res.data.data ?? res.data
+    const list = Array.isArray(res?.data?.data)
+      ? res.data.data
+      : Array.isArray(res?.data)
+        ? res.data
+        : []
+
+    rawProducts.value = list
     activeSlideIndex.value = 0
   } catch (err) {
-    console.error('خطا در دریافت محصولات:', err)
+    console.error('خطا در دریافت محصولات:', err?.response || err)
     hasError.value = true
   } finally {
     isLoading.value = false
   }
 }
 
-// استخراج و آماده‌سازی محصولات تخفیف‌دار
+// آماده‌سازی محصولات تخفیف‌دار
 const discountedList = computed(() => {
   return rawProducts.value
-    .filter((item) => item.is_active !== false)
+    .filter((item) => item.is_active !== false && item.is_active !== 0)
     .map((item) => {
       const activeVariants = (item.variants ?? []).filter(
-        (v) => v.is_active !== false
+        (v) => v.is_active !== false && v.is_active !== 0,
       )
 
-      const saleVariant = activeVariants.find((v) => {
-        const p = Number(v.price)
-        const d = Number(v.discount_price)
-        return p > 0 && d > 0 && d < p
-      })
+      const isSaleVariant = (v) => {
+        const price = Number(v.price)
+        const discount = Number(v.discount_price)
+        return (
+          v.price !== null &&
+          v.price !== undefined &&
+          v.price !== '' &&
+          v.discount_price !== null &&
+          v.discount_price !== undefined &&
+          v.discount_price !== '' &&
+          Number.isFinite(price) &&
+          Number.isFinite(discount) &&
+          price > 0 &&
+          discount >= 0 &&
+          discount < price
+        )
+      }
+
+      const saleVariant =
+        activeVariants.find((v) => isSaleVariant(v) && Number(v.stock) > 0) ??
+        activeVariants.find((v) => isSaleVariant(v))
 
       const targetVariant =
-        saleVariant ?? activeVariants.find((v) => Number(v.price) > 0)
+        saleVariant ??
+        activeVariants.find((v) => Number(v.stock) > 0 && Number(v.price) > 0) ??
+        activeVariants.find((v) => Number(v.price) > 0) ??
+        null
 
-      const basePrice = Number(item.price ?? targetVariant?.price ?? 0)
-      const salePrice = Number(
-        item.discount_price ?? targetVariant?.discount_price ?? 0
-      )
+      const itemPrice = Number(item.price)
+      const itemDiscount = Number(item.discount_price)
 
-      const directDiscount =
-        basePrice > 0 && salePrice > 0 && salePrice < basePrice
+      const hasItemPrice =
+        item.price !== null &&
+        item.price !== undefined &&
+        item.price !== '' &&
+        Number.isFinite(itemPrice) &&
+        itemPrice > 0
+
+      const hasItemDiscount =
+        item.discount_price !== null &&
+        item.discount_price !== undefined &&
+        item.discount_price !== '' &&
+        Number.isFinite(itemDiscount) &&
+        itemDiscount >= 0
+
+      const directDiscount = hasItemPrice && hasItemDiscount && itemDiscount < itemPrice
+
       const isDiscounted = directDiscount || Boolean(saleVariant)
 
       const finalBase = directDiscount
-        ? basePrice
-        : Number(saleVariant?.price ?? basePrice)
+        ? itemPrice
+        : Number(saleVariant?.price ?? (hasItemPrice ? itemPrice : 0))
 
-      const finalSale = directDiscount
-        ? salePrice
-        : Number(saleVariant?.discount_price ?? 0)
+      const finalSale = directDiscount ? itemDiscount : Number(saleVariant?.discount_price ?? 0)
+
+      const thumbCandidates = [
+        targetVariant?.image_url,
+        targetVariant?.image,
+        item.image_url,
+        item.image,
+      ].filter((img) => typeof img === 'string' && img.trim() !== '')
+
+      const uniqueThumbs = [...new Set(thumbCandidates)]
+      const validThumb = uniqueThumbs.find((img) => !brokenImages.value[`${item.id}::${img}`]) || ''
 
       return {
         ...item,
         selectedVariant: targetVariant,
-        thumbUrl: item.image || targetVariant?.image || null,
+        thumbUrl: validThumb,
         baseAmount: finalBase,
         saleAmount: finalSale,
-        offPercent: isDiscounted
-          ? Math.round(((finalBase - finalSale) / finalBase) * 100)
-          : 0,
+        offPercent:
+          isDiscounted && finalBase > 0
+            ? Math.round(((finalBase - finalSale) / finalBase) * 100)
+            : 0,
         isDiscounted,
       }
     })
-    .filter((item) => item.isDiscounted)
+    .filter((item) => item.isDiscounted && item.baseAmount > 0)
 })
 
-// بررسی موجودی هر آیتم
+// بررسی موجودی
 const getAvailableStock = (item) => {
-  return Math.max(0, Number(item.selectedVariant?.stock ?? item.stock ?? 0))
+  const source = item.selectedVariant ?? item
+  return Math.max(0, Number(source?.stock ?? 0))
 }
 
 // افزودن به سبد خرید
 const handleAddToCart = (item) => {
   const stockCount = getAvailableStock(item)
-  if (stockCount <= 0) return
+
+  if (stockCount <= 0 || item.saleAmount <= 0) return
 
   cartStore.addToCart({
-    ...item,
+    id: item.id,
+    product_id: item.id,
+    variant_id: item.selectedVariant?.id ?? null,
+    name: item.name,
     image: item.thumbUrl,
     price: item.baseAmount,
+    discount_price: item.saleAmount,
     final_price: item.saleAmount,
-    variant_id: item.selectedVariant?.id ?? null,
-    size: item.selectedVariant?.size ?? null,
-    color: item.selectedVariant?.color ?? null,
+    color: item.selectedVariant?.color || '',
+    size: item.selectedVariant?.size || '',
+    quantity: 1,
     stock: stockCount,
   })
 }
 
-// ساخت آدرس کامل تصویر
+// ساخت آدرس تصویر سازگار با هاست و HTTPS
 const buildImgSrc = (imgPath) => {
-  if (!imgPath) return ''
-  if (/^https?:\/\//i.test(imgPath)) return imgPath
+  if (!imgPath || typeof imgPath !== 'string') return ''
 
-  const host = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(
-    /\/+$/,
-    ''
-  )
-  const clean = String(imgPath).replace(/^\/+/, '')
+  const value = imgPath.trim()
+  if (!value) return ''
 
-  return clean.startsWith('storage/')
-    ? `${host}/${clean}`
-    : `${host}/storage/${clean}`
+  if (/^https?:\/\//i.test(value)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      value.startsWith('http://')
+    ) {
+      return value.replace(/^http:\/\//i, 'https://')
+    }
+    return value
+  }
+
+  if (value.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${value}`
+  }
+
+  const clean = value.replace(/^\/+/, '').replace(/^storage\/+/, '')
+
+  return normalizedApiBase ? `${normalizedApiBase}/storage/${clean}` : `/storage/${clean}`
 }
 
-// فرمت فارسی قیمت
+const onOfferImageError = (item) => {
+  if (!item?.thumbUrl) return
+
+  brokenImages.value = {
+    ...brokenImages.value,
+    [`${item.id}::${item.thumbUrl}`]: true,
+  }
+}
+
+// فرمت قیمت
 const toPersianCurrency = (val) => {
-  return new Intl.NumberFormat('fa-IR').format(Number(val))
+  const num = Number(val)
+  return Number.isFinite(num) ? new Intl.NumberFormat('fa-IR').format(num) : '۰'
 }
 
 // تایمر شمارش معکوس
@@ -155,14 +233,44 @@ const refreshTimer = () => {
   }
 }
 
-// محاسبه تعداد کارت‌های قابل مشاهده در اسلایدر
+// تعداد کارت‌های قابل مشاهده
 const calcVisibleCards = () => {
+  if (typeof window === 'undefined') return 1
   if (window.innerWidth <= 600) return 1
   if (window.innerWidth <= 1050) return 2
+
   return Math.max(1, Math.floor((trackRef.value?.clientWidth ?? 600) / 254))
 }
 
-// پیمایش اسلایدر
+// همگام‌سازی ایندکس اسلاید هنگام اسکرول دستی
+const syncSlideIndexOnScroll = () => {
+  const container = trackRef.value
+  if (!container || !container.children.length) return
+
+  const computed = getComputedStyle(container)
+  const rtlMode = computed.direction === 'rtl'
+  const padOffset = parseFloat(rtlMode ? computed.paddingRight : computed.paddingLeft) || 0
+  const cRect = container.getBoundingClientRect()
+  const anchor = rtlMode ? cRect.right - padOffset : cRect.left + padOffset
+
+  let closestIndex = 0
+  let minDistance = Infinity
+
+  Array.from(container.children).forEach((child, idx) => {
+    const tRect = child.getBoundingClientRect()
+    const edge = rtlMode ? tRect.right : tRect.left
+    const dist = Math.abs(edge - anchor)
+    if (dist < minDistance) {
+      minDistance = dist
+      closestIndex = idx
+    }
+  })
+
+  const upperLimit = Math.max(0, discountedList.value.length - calcVisibleCards())
+  activeSlideIndex.value = Math.min(closestIndex, upperLimit)
+}
+
+// حرکت اسلایدر
 const slideTrack = (stepDirection) => {
   if (!trackRef.value) return
 
@@ -171,7 +279,7 @@ const slideTrack = (stepDirection) => {
 
   activeSlideIndex.value = Math.max(
     0,
-    Math.min(upperLimit, activeSlideIndex.value + stepDirection * visible)
+    Math.min(upperLimit, activeSlideIndex.value + stepDirection * visible),
   )
 
   const container = trackRef.value
@@ -180,8 +288,8 @@ const slideTrack = (stepDirection) => {
   if (targetEl) {
     const computed = getComputedStyle(container)
     const rtlMode = computed.direction === 'rtl'
-    const padOffset =
-      parseFloat(rtlMode ? computed.paddingRight : computed.paddingLeft) || 0
+
+    const padOffset = parseFloat(rtlMode ? computed.paddingRight : computed.paddingLeft) || 0
 
     const cRect = container.getBoundingClientRect()
     const tRect = targetEl.getBoundingClientRect()
@@ -190,28 +298,32 @@ const slideTrack = (stepDirection) => {
       ? tRect.right - (cRect.right - padOffset)
       : tRect.left - (cRect.left + padOffset)
 
-    container.scrollBy({ left: scrollDelta, behavior: 'smooth' })
+    container.scrollBy({
+      left: scrollDelta,
+      behavior: 'smooth',
+    })
   }
 }
 
 const onWindowResize = () => {
   if (!trackRef.value) return
-  const upperLimit = Math.max(
-    0,
-    discountedList.value.length - calcVisibleCards()
-  )
+
+  const upperLimit = Math.max(0, discountedList.value.length - calcVisibleCards())
+
   activeSlideIndex.value = Math.min(activeSlideIndex.value, upperLimit)
 }
 
 onMounted(() => {
   loadOfferProducts()
   refreshTimer()
+
   timerId = setInterval(refreshTimer, 1000)
   window.addEventListener('resize', onWindowResize)
 })
 
 onUnmounted(() => {
   if (timerId) clearInterval(timerId)
+
   window.removeEventListener('resize', onWindowResize)
 })
 </script>
@@ -219,7 +331,7 @@ onUnmounted(() => {
 <template>
   <section class="special-offers-wrapper" dir="rtl">
     <div class="special-offers-container">
-      <!-- پنل فروش ویژه سمت راست -->
+      <!-- پنل فروش ویژه -->
       <aside class="promo-panel">
         <div class="ring-decor ring-top"></div>
         <div class="ring-decor ring-bottom"></div>
@@ -233,10 +345,7 @@ onUnmounted(() => {
                 stroke-width="3.5"
                 stroke-linecap="round"
               />
-              <path
-                d="M11 23h42l-3 31.2a4 4 0 0 1-4 3.6H18a4 4 0 0 1-4-3.6L11 23Z"
-                fill="#fff"
-              />
+              <path d="M11 23h42l-3 31.2a4 4 0 0 1-4 3.6H18a4 4 0 0 1-4-3.6L11 23Z" fill="#fff" />
               <path
                 d="M39.5 33.5 24.5 51"
                 stroke="#18181b"
@@ -263,9 +372,7 @@ onUnmounted(() => {
             <strong>SALE</strong>
           </div>
 
-          <p class="promo-subtext">
-            محصولات منتخب با تخفیف‌های ویژه؛ فرصت رو از دست نده!
-          </p>
+          <p class="promo-subtext">محصولات منتخب با تخفیف‌های ویژه؛ فرصت رو از دست نده!</p>
 
           <!-- شمارش معکوس -->
           <div class="timer-grid">
@@ -273,17 +380,23 @@ onUnmounted(() => {
               <strong>{{ timerState.days }}</strong>
               <span>روز</span>
             </div>
+
             <span class="timer-colon">:</span>
+
             <div class="timer-cell">
               <strong>{{ timerState.hours }}</strong>
               <span>ساعت</span>
             </div>
+
             <span class="timer-colon">:</span>
+
             <div class="timer-cell">
               <strong>{{ timerState.minutes }}</strong>
               <span>دقیقه</span>
             </div>
+
             <span class="timer-colon">:</span>
+
             <div class="timer-cell">
               <strong>{{ timerState.seconds }}</strong>
               <span>ثانیه</span>
@@ -297,15 +410,11 @@ onUnmounted(() => {
         </div>
       </aside>
 
-      <!-- بخش اسلایدر محصولات -->
+      <!-- اسلایدر محصولات -->
       <div class="offers-carousel-box">
-        <div v-if="isLoading" class="state-placeholder">
-          در حال دریافت محصولات...
-        </div>
+        <div v-if="isLoading" class="state-placeholder">در حال دریافت محصولات...</div>
 
-        <div v-else-if="hasError" class="state-placeholder">
-          دریافت محصولات با خطا مواجه شد.
-        </div>
+        <div v-else-if="hasError" class="state-placeholder">دریافت محصولات با خطا مواجه شد.</div>
 
         <div v-else-if="discountedList.length === 0" class="state-placeholder">
           در حال حاضر محصول تخفیف‌داری وجود ندارد.
@@ -330,17 +439,15 @@ onUnmounted(() => {
             </svg>
           </button>
 
-          <!-- لیست کارت‌ها با طراحی عمودی و برش منحنی (Inverted Radius) -->
-          <div class="cards-track" ref="trackRef">
-            <div
-              v-for="item in discountedList"
-              :key="item.id"
-              class="offer-card-holder"
-            >
+          <div class="cards-track" ref="trackRef" @scroll.passive="syncSlideIndexOnScroll">
+            <div v-for="item in discountedList" :key="item.id" class="offer-card-holder">
               <article class="offer-card">
                 <!-- تصویر محصول -->
                 <RouterLink
-                  :to="`/product/${item.slug || item.id}`"
+                  :to="{
+                    name: 'product-detail',
+                    params: { id: item.id },
+                  }"
                   class="offer-thumb"
                 >
                   <img
@@ -348,15 +455,14 @@ onUnmounted(() => {
                     :src="buildImgSrc(item.thumbUrl)"
                     :alt="item.name"
                     loading="lazy"
-                    @error="$event.target.style.display = 'none'"
+                    decoding="async"
+                    @error="onOfferImageError(item)"
                   />
 
-                  <div v-if="!item.thumbUrl" class="brand-fallback">
-                    ARYSYS
-                  </div>
+                  <div v-else class="brand-fallback">ARYSYS</div>
 
                   <span class="off-pill">
-                    {{ item.offPercent }}٪ تخفیف
+                    {{ item.offPercent.toLocaleString('fa-IR') }}٪ تخفیف
                   </span>
                 </RouterLink>
 
@@ -372,17 +478,25 @@ onUnmounted(() => {
                       :class="getAvailableStock(item) > 0 ? 'in-stock' : 'out-stock'"
                     >
                       <span class="dot"></span>
-                      <span>{{ getAvailableStock(item) > 0 ? 'موجود' : 'ناموجود' }}</span>
+
+                      <span>
+                        {{ getAvailableStock(item) > 0 ? 'موجود' : 'ناموجود' }}
+                      </span>
                     </div>
                   </div>
 
                   <h4 class="offer-title" :title="item.name">
-                    <RouterLink :to="`/product/${item.slug || item.id}`">
+                    <RouterLink
+                      :to="{
+                        name: 'product-detail',
+                        params: { id: item.id },
+                      }"
+                    >
                       {{ item.name }}
                     </RouterLink>
                   </h4>
 
-                  <!-- فوتر قیمت (تراز با دکمه انحنای چپ) -->
+                  <!-- قیمت -->
                   <div class="offer-footer">
                     <div class="price-stack">
                       <span class="strike-price">
@@ -398,7 +512,7 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <!-- دکمه دایره‌ای کوچک و تراز شده داخل انحنای برش -->
+                <!-- افزودن به سبد خرید -->
                 <button
                   type="button"
                   class="inverted-add-btn"
@@ -406,7 +520,14 @@ onUnmounted(() => {
                   :title="getAvailableStock(item) > 0 ? 'افزودن به سبد خرید' : 'ناموجود'"
                   @click="handleAddToCart(item)"
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <path d="M16 10a4 4 0 0 1-8 0" />
@@ -420,10 +541,7 @@ onUnmounted(() => {
             class="nav-circle-btn nav-next"
             type="button"
             aria-label="محصولات بعدی"
-            :disabled="
-              activeSlideIndex >=
-              Math.max(0, discountedList.length - calcVisibleCards())
-            "
+            :disabled="activeSlideIndex >= Math.max(0, discountedList.length - calcVisibleCards())"
             @click="slideTrack(1)"
           >
             <svg viewBox="0 0 24 24" fill="none">
@@ -443,7 +561,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ساختار ایمن و ریسپانسیو بدون استفاده از 100vw دردسرآفرین در موبایل */
 .special-offers-wrapper {
   --brand: #18181b;
   --gold-deep: #8b7657;
@@ -452,7 +569,7 @@ onUnmounted(() => {
 
   width: 100%;
   padding: 50px 0;
-  background: #f3f1ed; /* انتقال پس‌زمینه تمام‌صفحه به شکل ایمن به این بخش */
+  background: #f3f1ed;
   box-sizing: border-box;
   direction: rtl;
   font-family: inherit;
@@ -474,18 +591,14 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-/* پنل فروش ویژه سمت راست */
+/* پنل فروش ویژه */
 .promo-panel {
   min-height: 390px;
   position: relative;
   overflow: hidden;
   border-radius: 28px;
   background:
-    radial-gradient(
-      120% 90% at 100% 0%,
-      rgba(255, 255, 255, 0.08) 0%,
-      transparent 55%
-    ),
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 55%),
     linear-gradient(150deg, #27272a 0%, #18181b 55%, #09090b 100%);
   box-shadow:
     0 24px 50px -22px rgba(0, 0, 0, 0.4),
@@ -643,7 +756,7 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
-/* کانتینر سمت چپ */
+/* کانتینر اسلایدر */
 .offers-carousel-box {
   min-width: 0;
   display: flex;
@@ -680,7 +793,7 @@ onUnmounted(() => {
   display: none;
 }
 
-/* نگهدارنده کارت با عرض ثابت و سایه نرم هماهنگ با برش */
+/* کارت */
 .offer-card-holder {
   flex: 0 0 240px;
   min-width: 0;
@@ -688,7 +801,9 @@ onUnmounted(() => {
   scroll-snap-align: start;
   scroll-snap-stop: always;
   filter: drop-shadow(0 6px 16px rgba(23, 20, 15, 0.06));
-  transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.35s ease;
+  transition:
+    transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1),
+    filter 0.35s ease;
 }
 
 .offer-card-holder:hover {
@@ -696,7 +811,6 @@ onUnmounted(() => {
   filter: drop-shadow(0 14px 24px rgba(139, 118, 87, 0.16));
 }
 
-/* ۱. بدنه کارت عمودی */
 .offer-card {
   position: relative;
   display: flex;
@@ -707,7 +821,7 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* ۲. اعمال برش Inverted Radius ظریف روی پس‌زمینه کارت */
+/* برش منحنی کارت */
 .offer-card::before {
   --r: 16px;
   --s: 20px;
@@ -728,22 +842,24 @@ onUnmounted(() => {
   -webkit-mask:
     calc(var(--_d) + var(--x)) 100% var(--_m),
     0 calc(100% - var(--_d) - var(--y)) var(--_m),
-    radial-gradient(var(--s) at 0 100%, #0000 99%, #000 calc(100% + 1px))
-      calc(var(--r) + var(--x)) calc(-1 * var(--r) - var(--y)),
+    radial-gradient(var(--s) at 0 100%, #0000 99%, #000 calc(100% + 1px)) calc(var(--r) + var(--x))
+      calc(-1 * var(--r) - var(--y)),
     var(--_g) calc(var(--_d) + var(--x)) 0,
     var(--_g) 0 calc(-1 * var(--_d) - var(--y));
+
   mask:
     calc(var(--_d) + var(--x)) 100% var(--_m),
     0 calc(100% - var(--_d) - var(--y)) var(--_m),
-    radial-gradient(var(--s) at 0 100%, #0000 99%, #000 calc(100% + 1px))
-      calc(var(--r) + var(--x)) calc(-1 * var(--r) - var(--y)),
+    radial-gradient(var(--s) at 0 100%, #0000 99%, #000 calc(100% + 1px)) calc(var(--r) + var(--x))
+      calc(-1 * var(--r) - var(--y)),
     var(--_g) calc(var(--_d) + var(--x)) 0,
     var(--_g) 0 calc(-1 * var(--_d) - var(--y));
+
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }
 
-/* ۳. بخش تصویر عمودی */
+/* تصویر محصول */
 .offer-thumb {
   position: relative;
   width: 100%;
@@ -793,7 +909,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
-/* ۴. جزئیات کارت */
+/* جزئیات کارت */
 .offer-body {
   display: flex;
   flex-direction: column;
@@ -876,7 +992,7 @@ onUnmounted(() => {
   color: var(--gold-deep);
 }
 
-/* ۵. فوتر قیمت */
+/* قیمت */
 .offer-footer {
   margin-top: auto;
   display: flex;
@@ -918,7 +1034,7 @@ onUnmounted(() => {
   gap: 3px;
 }
 
-/* ۶. دکمه افزودن به سبد خرید */
+/* دکمه سبد خرید */
 .inverted-add-btn {
   position: absolute;
   left: 0;
@@ -949,7 +1065,7 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* دکمه‌های ناوبری اسلایدر */
+/* دکمه‌های اسلایدر */
 .nav-circle-btn {
   position: absolute;
   z-index: 4;
@@ -996,6 +1112,7 @@ onUnmounted(() => {
   left: 0;
 }
 
+/* وضعیت دریافت محصولات */
 .state-placeholder {
   min-height: 260px;
   display: flex;

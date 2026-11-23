@@ -1,7 +1,11 @@
 <script setup>
+import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { logoutUser } from '@/services/auth'
 
 const router = useRouter()
+const loggingOut = ref(false)
+
 const menuItems = [
   {
     title: 'داشبورد',
@@ -30,11 +34,18 @@ const menuItems = [
   },
 ]
 
-function handleLogout() {
-  router.push('/auth')
+async function handleLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+
+  try {
+    await logoutUser()
+    router.push('/auth')
+  } finally {
+    loggingOut.value = false
+  }
 }
 </script>
-
 <template>
   <aside class="account-sidebar">
     <div class="sidebar-heading">
@@ -57,9 +68,9 @@ function handleLogout() {
     </nav>
 
     <div class="sidebar-bottom">
-      <button class="logout-button" @click="handleLogout">
+      <button class="logout-button" :disabled="loggingOut" @click="handleLogout">
         <span class="menu-icon">↪</span>
-        خروج از حساب
+        {{ loggingOut ? 'در حال خروج...' : 'خروج از حساب' }}
       </button>
     </div>
   </aside>

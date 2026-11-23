@@ -1,4 +1,3 @@
-
 <template>
   <header
     class="fixed top-0 left-0 w-full z-50 transition-all duration-500"
@@ -104,7 +103,7 @@
                       @click="closeDesktopMenu"
                     >
                       <span class="menu-icon">
-                        <ShoppingBag class="w-5 h-5" />
+                        <Store class="w-5 h-5" />
                       </span>
                       فروشگاه
                     </RouterLink>
@@ -115,7 +114,7 @@
                       @click="closeDesktopMenu"
                     >
                       <span class="menu-icon">
-                        <Newspaper class="w-5 h-5" />
+                        <BookOpen class="w-5 h-5" />
                       </span>
                       مقالات
                     </RouterLink>
@@ -137,7 +136,7 @@
                       @click="closeDesktopMenu"
                     >
                       <span class="menu-icon">
-                        <Phone class="w-5 h-5" />
+                        <PhoneCall class="w-5 h-5" />
                       </span>
                       تماس با ما
                     </RouterLink>
@@ -150,7 +149,7 @@
                       @click="cart.openCart(); closeDesktopMenu()"
                     >
                       <span class="menu-icon">
-                        <ShoppingCart class="w-5 h-5" />
+                        <ShoppingBag class="w-5 h-5" />
                       </span>
 
                       <span class="flex-1">سبد خرید</span>
@@ -164,7 +163,7 @@
                     </button>
 
                     <RouterLink
-                      to="/favorites"
+                      to="dashboard/wishlist"
                       class="desktop-menu-item"
                       @click="closeDesktopMenu"
                     >
@@ -191,7 +190,7 @@
                       @click="closeDesktopMenu"
                     >
                       <span class="menu-icon">
-                        <User class="w-5 h-5" />
+                        <UserRound class="w-5 h-5" />
                       </span>
                       {{ auth.isLoggedIn ? auth.user?.name : 'ورود / ثبت‌نام' }}
                     </RouterLink>
@@ -207,37 +206,8 @@
             @click="isOpen = !isOpen"
             aria-label="باز کردن منو"
           >
-            <svg
-              v-if="!isOpen"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-
-            <svg
-              v-else
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <Menu v-if="!isOpen" class="w-6 h-6" />
+            <X v-else class="w-6 h-6" />
           </button>
 
           <!-- Mobile Logo -->
@@ -272,7 +242,7 @@
           <button
             type="button"
             @click="toggleSearch"
-            class="desktop-action hidden lg:flex"
+            class="desktop-action hidden lg:flex items-center justify-center"
             title="جستجوی محصولات"
             aria-label="جستجوی محصولات"
           >
@@ -283,10 +253,10 @@
           <div class="hidden lg:flex items-center gap-2">
             <RouterLink
               :to="auth.isLoggedIn ? '/dashboard' : '/auth'"
-              class="desktop-action !w-auto !px-3 gap-2"
+              class="desktop-action flex items-center justify-center !w-auto !px-3 gap-2"
               title="حساب کاربری"
             >
-              <User class="w-5 h-5 shrink-0" />
+              <UserRound class="w-5 h-5 shrink-0" />
 
               <span
                 v-if="auth.isLoggedIn"
@@ -298,11 +268,11 @@
 
             <button
               type="button"
-              class="desktop-action relative"
+              class="desktop-action relative flex items-center justify-center"
               title="سبد خرید"
               @click="cart.openCart()"
             >
-              <ShoppingCart class="w-5 h-5" />
+              <ShoppingBag class="w-5 h-5" />
 
               <span
                 v-if="totalItems > 0"
@@ -313,21 +283,15 @@
             </button>
           </div>
 
-          <!-- Mobile Shopping Cart -->
+          <!-- Mobile Search Button -->
           <button
             type="button"
-            @click="cart.openCart()"
-            class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 lg:hidden active:scale-95 transition"
-            title="سبد خرید"
+            @click="openMobileSearch"
+            class="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 lg:hidden active:scale-95 transition"
+            title="جستجوی محصولات"
+            aria-label="جستجوی محصولات"
           >
-            <ShoppingCart class="w-5 h-5 text-white" />
-
-            <span
-              v-if="totalItems > 0"
-              class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center"
-            >
-              {{ totalItems }}
-            </span>
+            <Search class="w-5 h-5 text-white" />
           </button>
         </div>
       </div>
@@ -394,7 +358,7 @@
             to="/shop"
             @click="isOpen = false"
           >
-            <ShoppingBag class="w-5 h-5" />
+            <Store class="w-5 h-5" />
             فروشگاه
           </RouterLink>
 
@@ -403,7 +367,7 @@
             to="/articles"
             @click="isOpen = false"
           >
-            <Newspaper class="w-5 h-5" />
+            <BookOpen class="w-5 h-5" />
             مقالات
           </RouterLink>
 
@@ -421,7 +385,7 @@
             to="/contact"
             @click="isOpen = false"
           >
-            <Phone class="w-5 h-5" />
+            <PhoneCall class="w-5 h-5" />
             تماس با ما
           </RouterLink>
 
@@ -451,7 +415,7 @@
             :to="auth.isLoggedIn ? '/dashboard' : '/auth'"
             @click="isOpen = false"
           >
-            <User class="w-5 h-5" />
+            <UserRound class="w-5 h-5" />
             {{ auth.isLoggedIn ? auth.user?.name : 'ورود / ثبت‌نام' }}
           </RouterLink>
         </div>
@@ -465,15 +429,15 @@ import {
   Search,
   Heart,
   GitCompare,
-  User,
-  ShoppingCart,
+  UserRound,
+  ShoppingBag,
   Menu,
   X,
   House,
-  ShoppingBag,
-  Newspaper,
+  Store,
+  BookOpen,
   Info,
-  Phone,
+  PhoneCall,
 } from 'lucide-vue-next'
 
 import {
@@ -576,6 +540,16 @@ const onScroll = () => {
 /* ---------- Search ---------- */
 
 const toggleSearch = async () => {
+  showSearch.value = !showSearch.value
+
+  if (showSearch.value) {
+    await nextTick()
+    searchInput.value?.focus()
+  }
+}
+
+const openMobileSearch = async () => {
+  isOpen.value = false
   showSearch.value = !showSearch.value
 
   if (showSearch.value) {
@@ -690,14 +664,14 @@ onUnmounted(() => {
   color: #fb7185;
 }
 
-/* Desktop action icons */
+/* Desktop action icons
+   توجه: display اینجا عمداً تعریف نشده، چون استایل scoped از کلاس‌های
+   hidden / lg:hidden تیلویند قوی‌تر است و باعث دیده شدن دکمه‌ها در موبایل می‌شد.
+   display از کلاس‌های flex داخل template می‌آید. */
 
 .desktop-action {
   width: 42px;
   height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 50%;
   border: 1px solid transparent;
   transition: 0.3s;

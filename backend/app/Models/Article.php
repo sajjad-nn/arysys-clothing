@@ -46,4 +46,9 @@ class Article extends Model
             'article_category_id'
         );
     }
+
+    public function comments()
+{
+    return $this->hasMany(ArticleComment::class);
+}
 }

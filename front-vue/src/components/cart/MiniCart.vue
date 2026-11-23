@@ -1,15 +1,16 @@
 <script setup>
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useCartStore } from '@/stores/cart'
 import { X, ShoppingBag, Trash2, Plus, Minus, ImageOff } from 'lucide-vue-next'
 
+const route = useRoute()
 const cart = useCartStore()
 
 const { items, isCartOpen, totalItems, subtotal } = storeToRefs(cart)
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
+const API_BASE = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
 
 // کلیدهایی که عکسشان خطا داده
 const brokenImages = ref(new Set())
@@ -21,20 +22,39 @@ const imageUrl = (image) => {
   if (!image) return ''
 
   const value = String(image).trim()
+  if (!value) return ''
 
-  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+  if (value.startsWith('data:')) {
     return value
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      value.startsWith('http://')
+    ) {
+      return value.replace(/^http:\/\//i, 'https://')
+    }
+    return value
+  }
+
+  if (value.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${value}`
   }
 
   const cleanPath = value.replace(/^\/+/, '').replace(/^storage\//, '')
 
-  return `${API_BASE}/storage/${cleanPath}`
+  return API_BASE ? `${API_BASE}/storage/${cleanPath}` : `/storage/${cleanPath}`
 }
 
-const hasImage = (item) => item.image && !brokenImages.value.has(itemKey(item))
+const hasImage = (item) => Boolean(item.image) && !brokenImages.value.has(itemKey(item))
 
 const onImageError = (item) => {
-  brokenImages.value = new Set(brokenImages.value).add(itemKey(item))
+  const next = new Set(brokenImages.value)
+  next.add(itemKey(item))
+  brokenImages.value = next
 }
 
 const formatPrice = (price) => new Intl.NumberFormat('fa-IR').format(Number(price) || 0)
@@ -61,6 +81,35 @@ const removeItem = (item) => {
 const closeCart = () => {
   isCartOpen.value = false
 }
+
+// بستن خودکار سبد خرید هنگام تغییر مسیر (Route)
+watch(
+  () => route.fullPath,
+  () => {
+    closeCart()
+  }
+)
+
+// وقتی سبد باز است، صفحه پشتش اسکرول نخورد
+watch(isCartOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
+// بستن با کلید Esc
+const onKeydown = (event) => {
+  if (event.key === 'Escape' && isCartOpen.value) {
+    closeCart()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
@@ -161,11 +210,15 @@ const closeCart = () => {
               <strong>{{ formatPrice(subtotal) }} <small>تومان</small></strong>
             </div>
 
-            <RouterLink to="/checkout" class="checkout-btn" @click="closeCart">
-              ادامه و ثبت سفارش
-            </RouterLink>
+            <div class="footer-actions">
+              <RouterLink to="/checkout" class="checkout-btn" @click="closeCart">
+                ادامه و ثبت سفارش
+              </RouterLink>
 
-            <RouterLink to="/cart" class="checkout-btn"> مشاهده سبد خرید </RouterLink>
+              <RouterLink to="/cart" class="continue-btn" @click="closeCart">
+                مشاهده سبد خرید
+              </RouterLink>
+            </div>
           </footer>
         </template>
       </aside>
@@ -189,12 +242,13 @@ const closeCart = () => {
 
   position: fixed;
   top: 0;
-  bottom: 0;
   left: 0;
   z-index: 9999;
   display: flex;
   flex-direction: column;
   width: min(100%, 420px);
+  height: 100vh;
+  height: 100dvh;
   background: #fff;
   box-shadow: 20px 0 50px -20px rgba(23, 20, 15, 0.35);
   color: var(--ink);
@@ -203,10 +257,11 @@ const closeCart = () => {
 /* سربرگ */
 
 .cart-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 16px 20px;
   border-bottom: 1px solid #eee9e0;
 }
 
@@ -305,6 +360,7 @@ const closeCart = () => {
 
 .cart-items {
   flex: 1;
+  min-height: 0;
   margin: 0;
   padding: 14px 16px;
   list-style: none;
@@ -328,9 +384,9 @@ const closeCart = () => {
 }
 
 .item-image {
-  flex: 0 0 88px;
-  width: 88px;
-  height: 104px;
+  flex: 0 0 82px;
+  width: 82px;
+  height: 98px;
   overflow: hidden;
   border-radius: 12px;
   background: #f3efe9;
@@ -364,7 +420,7 @@ const closeCart = () => {
   overflow: hidden;
   font-size: 13.5px;
   font-weight: 700;
-  line-height: 1.7;
+  line-height: 1.6;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -385,8 +441,8 @@ const closeCart = () => {
 
 .item-price {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .item-price .old {
@@ -425,8 +481,8 @@ small {
 .qty button {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 0;
   border-radius: 7px;
   background: #f5f2ec;
@@ -455,8 +511,8 @@ small {
 .remove {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: 0;
   border-radius: 9px;
   background: #fdf0f0;
@@ -475,19 +531,20 @@ small {
 /* پایین سبد */
 
 .cart-footer {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px calc(18px + env(safe-area-inset-bottom));
+  gap: 12px;
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
   border-top: 1px solid #eee9e0;
   background: #fdfcf9;
+  box-shadow: 0 -8px 24px -12px rgba(23, 20, 15, 0.08);
 }
 
 .subtotal {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
   font-size: 14px;
 }
 
@@ -496,18 +553,26 @@ small {
   font-weight: 800;
 }
 
+.footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
 .checkout-btn,
 .continue-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 13px;
+  min-height: 46px;
+  padding: 12px 16px;
   border-radius: 12px;
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background 0.25s,
     color 0.25s,
@@ -523,17 +588,78 @@ small {
 
 .checkout-btn:hover {
   background: var(--gold-deep);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .continue-btn {
-  border: 1px solid #e4ddd0;
+  border: 1.5px solid #dfd6c5;
   background: #fff;
   color: var(--ink);
 }
 
 .continue-btn:hover {
   border-color: var(--gold);
+  background: #faf7f0;
+}
+
+/* =========================================================
+   تا عرض ۱۰۲۳ پیکسل منوی پایین موبایل دیده می‌شود (lg:hidden)
+   پس سبد باید بالای آن تمام شود تا منو همیشه در دسترس بماند.
+   ۶.۷۵rem = ارتفاع منو + فاصله‌اش از پایین + کمی فاصله امن
+   ========================================================= */
+@media (max-width: 1023px) {
+  .cart-drawer {
+    bottom: 6.75rem;
+    border-radius: 0 0 24px 24px;
+  }
+
+  .cart-footer {
+    padding-bottom: 16px;
+  }
+}
+
+/* بهینه‌سازی موبایل */
+@media (max-width: 480px) {
+  .cart-drawer {
+    width: 100%;
+  }
+
+  .cart-header {
+    padding: 14px 16px;
+  }
+
+  .cart-items {
+    padding: 12px;
+  }
+
+  .cart-item {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .item-image {
+    flex: 0 0 74px;
+    width: 74px;
+    height: 90px;
+  }
+
+  .cart-footer {
+    padding: 14px 16px 16px;
+    gap: 10px;
+  }
+
+  .footer-actions {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 8px;
+  }
+
+  .checkout-btn,
+  .continue-btn {
+    padding: 11px 10px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
 }
 
 /* انیمیشن‌ها */
@@ -564,7 +690,8 @@ small {
   .slide-enter-active,
   .slide-leave-active,
   .icon-btn,
-  .checkout-btn {
+  .checkout-btn,
+  .continue-btn {
     transition: none;
   }
 }

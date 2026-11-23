@@ -1,6 +1,5 @@
 <template>
   <section class="latest-products-section" dir="rtl">
-    <!-- هدر بخش جدیدترین محصولات -->
     <header class="section-top-bar">
       <div class="title-group">
         <h2>جدیدترین محصولات</h2>
@@ -13,22 +12,20 @@
       </RouterLink>
     </header>
 
-    <!-- وضعیت در حال بارگذاری -->
-    <div v-if="isLoading" class="state-box">
-      <span class="loading-ring"></span>
+    <div v-if="isLoading" class="state-box" role="status">
+      <span class="loading-ring" aria-hidden="true"></span>
       <p>در حال دریافت محصولات...</p>
     </div>
 
-    <!-- وضعیت خطا -->
-    <div v-else-if="errorText" class="state-box has-error">
+    <div v-else-if="errorText" class="state-box has-error" role="alert">
       <p>{{ errorText }}</p>
-      <button class="retry-action" @click="loadLatestProducts">تلاش مجدد</button>
+      <button type="button" class="retry-action" @click="loadLatestProducts">تلاش مجدد</button>
     </div>
 
-    <!-- وضعیت خالی بودن لیست -->
-    <div v-else-if="!latestList.length" class="state-box">محصولی برای نمایش وجود ندارد.</div>
+    <div v-else-if="!latestList.length" class="state-box">
+      محصولی برای نمایش وجود ندارد.
+    </div>
 
-    <!-- اسلایدر جدیدترین محصولات -->
     <Swiper
       v-else
       :modules="[Navigation]"
@@ -41,36 +38,45 @@
       <SwiperSlide v-for="item in latestList" :key="item.id">
         <div class="card-drop-shadow">
           <article class="item-card">
-            <!-- بخش تصویر محصول -->
+
+            <!-- تصویر محصول -->
             <div class="item-figure">
-              <RouterLink :to="`/product/${item.slug || item.id}`" class="thumb-link">
+              <RouterLink
+                :to="{
+                  name: 'product-detail',
+                  params: { id: item.id }
+                }"
+                class="thumb-link"
+              >
                 <img
-                  v-if="resolveImage(item)"
+                  v-if="hasValidImage(item)"
+                  :key="`${item.id}-${resolveImage(item)}`"
                   :src="buildImageUrl(resolveImage(item))"
                   :alt="item.name"
                   loading="lazy"
-                  @error="handleBrokenImg"
+                  decoding="async"
+                  @error="onImageError(item)"
                 />
+
+                <div v-else class="no-thumb">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span>فاقد تصویر</span>
+                </div>
               </RouterLink>
 
-              <div v-if="!resolveImage(item)" class="no-thumb">
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                <span>فاقد تصویر</span>
-              </div>
-
               <span v-if="calcPricing(item).hasDiscount" class="sale-badge">
-                {{ calcDiscountPercent(item) }}٪ تخفیف
+                {{ calcDiscountPercent(item).toLocaleString('fa-IR') }}٪ تخفیف
               </span>
             </div>
 
@@ -91,15 +97,23 @@
               </div>
 
               <h3 class="item-heading" :title="item.name">
-                <RouterLink :to="`/product/${item.slug || item.id}`">
+                <RouterLink
+                  :to="{
+                    name: 'product-detail',
+                    params: { id: item.id }
+                  }"
+                >
                   {{ item.name }}
                 </RouterLink>
               </h3>
 
-              <!-- فوتر قیمت (تراز با دکمه انحنای چپ) -->
+              <!-- قیمت -->
               <div class="item-bottom-bar">
                 <div class="pricing-col">
-                  <span class="prev-price" :class="{ 'is-hidden': !calcPricing(item).hasDiscount }">
+                  <span
+                    class="prev-price"
+                    :class="{ 'is-hidden': !calcPricing(item).hasDiscount }"
+                  >
                     {{
                       calcPricing(item).hasDiscount
                         ? toPersianDigits(calcPricing(item).basePrice)
@@ -108,18 +122,20 @@
                   </span>
 
                   <div class="active-price">
-                    <span class="val">{{ toPersianDigits(calcPricing(item).finalPrice) }}</span>
-                    <small>تومان</small>
+                    <span class="val">
+                      {{ toPersianDigits(calcPricing(item).finalPrice) }}
+                    </span>
+                    <small v-if="calcPricing(item).finalPrice !== null">تومان</small>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- دکمه دایره‌ای داخل برش منحنی (Inverted Radius) -->
+            <!-- افزودن به سبد خرید -->
             <button
               type="button"
               class="corner-cart-btn"
-              :disabled="checkStock(item) <= 0"
+              :disabled="checkStock(item) <= 0 || calcPricing(item).finalPrice === null"
               :title="checkStock(item) > 0 ? 'افزودن به سبد خرید' : 'ناموجود'"
               @click="triggerAddToCart(item)"
             >
@@ -136,6 +152,7 @@
                 <path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             </button>
+
           </article>
         </div>
       </SwiperSlide>
@@ -153,13 +170,16 @@ import { useCartStore } from '../stores/cart'
 import 'swiper/css'
 import 'swiper/css/navigation'
 
-const BACKEND_URL = (import.meta.env?.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
+const BACKEND_URL = (
+  import.meta.env?.VITE_API_URL || ''
+).trim().replace(/\/+$/, '')
 
 const cartStore = useCartStore()
 
 const latestList = ref([])
 const isLoading = ref(true)
 const errorText = ref('')
+const brokenImages = ref({})
 
 const sliderBreakpoints = {
   520: { slidesPerView: 2.2, spaceBetween: 16 },
@@ -169,37 +189,104 @@ const sliderBreakpoints = {
 }
 
 const getActiveVariants = (item) => {
-  return (item.variants || []).filter((v) => v.is_active !== false && v.is_active !== 0)
+  return (item.variants || []).filter(
+    (v) => v.is_active !== false && v.is_active !== 0
+  )
 }
 
 const getPrimaryVariant = (item) => {
-  return getActiveVariants(item)[0] || null
+  const activeList = getActiveVariants(item)
+  return (
+    activeList.find((v) => Number(v.stock) > 0) ||
+    activeList[0] ||
+    null
+  )
 }
 
 const resolveImage = (item) => {
   const primary = getPrimaryVariant(item)
-  return primary?.image || item.image || ''
+  const candidates = [
+    primary?.image_url,
+    primary?.image,
+    item.image_url,
+    item.image,
+  ].filter((img) => typeof img === 'string' && img.trim() !== '')
+
+  const uniqueCandidates = [...new Set(candidates)]
+
+  for (const raw of uniqueCandidates) {
+    if (!brokenImages.value[`${item.id}::${raw}`]) {
+      return raw
+    }
+  }
+
+  return ''
 }
+
+const hasValidImage = (item) => Boolean(resolveImage(item))
 
 const buildImageUrl = (raw) => {
   if (!raw || typeof raw !== 'string') return ''
-  const trimmed = raw.trim()
-  if (/^https?:\/\//i.test(trimmed)) return trimmed
 
-  const normalized = trimmed.replace(/^\/+/, '').replace(/^storage\/+/, '')
-  return `${BACKEND_URL}/storage/${normalized}`
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      trimmed.startsWith('http://')
+    ) {
+      return trimmed.replace(/^http:\/\//i, 'https://')
+    }
+    return trimmed
+  }
+
+  if (trimmed.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${trimmed}`
+  }
+
+  const normalized = trimmed
+    .replace(/^\/+/, '')
+    .replace(/^storage\/+/, '')
+
+  return BACKEND_URL
+    ? `${BACKEND_URL}/storage/${normalized}`
+    : `/storage/${normalized}`
 }
 
-const handleBrokenImg = (e) => {
-  e.target.style.display = 'none'
+const onImageError = (item) => {
+  const current = resolveImage(item)
+  if (!current) return
+
+  brokenImages.value = {
+    ...brokenImages.value,
+    [`${item.id}::${current}`]: true,
+  }
 }
 
 const calcPricing = (item) => {
-  const source = getPrimaryVariant(item) || item
+  const primary = getPrimaryVariant(item)
+  const hasVariantPrice =
+    primary &&
+    primary.price !== null &&
+    primary.price !== undefined &&
+    primary.price !== '' &&
+    Number.isFinite(Number(primary.price))
+
+  const source = hasVariantPrice ? primary : item
+
+  const hasBase =
+    source.price !== null &&
+    source.price !== undefined &&
+    source.price !== ''
+
   const basePrice = Number(source.price)
   const salePrice = Number(source.discount_price)
 
   const hasDiscount =
+    hasBase &&
     source.discount_price !== null &&
     source.discount_price !== undefined &&
     source.discount_price !== '' &&
@@ -208,47 +295,58 @@ const calcPricing = (item) => {
     salePrice >= 0 &&
     salePrice < basePrice
 
+  const validBase = hasBase && Number.isFinite(basePrice) ? basePrice : null
+
   return {
-    basePrice: Number.isFinite(basePrice) ? basePrice : null,
-    finalPrice: hasDiscount ? salePrice : basePrice,
+    basePrice: validBase,
+    finalPrice: hasDiscount ? salePrice : validBase,
     hasDiscount,
   }
 }
 
 const calcDiscountPercent = (item) => {
   const { hasDiscount, basePrice, finalPrice } = calcPricing(item)
+
   if (!hasDiscount || !basePrice) return 0
+
   return Math.round(((basePrice - finalPrice) / basePrice) * 100)
 }
 
 const checkStock = (item) => {
   const primary = getPrimaryVariant(item)
   const rawStock = primary ? primary.stock : item.stock
+
   return Math.max(0, Number(rawStock) || 0)
 }
 
 const toPersianDigits = (val) => {
-  if (val === null || val === undefined || !Number.isFinite(Number(val))) {
+  if (val === null || val === undefined || val === '' || !Number.isFinite(Number(val))) {
     return 'قیمت ثبت نشده'
   }
+
   return Number(val).toLocaleString('fa-IR')
 }
 
 const triggerAddToCart = (item) => {
   const availableStock = checkStock(item)
-  if (availableStock <= 0) return
+  const { basePrice, finalPrice, hasDiscount } = calcPricing(item)
+
+  if (availableStock <= 0 || finalPrice === null) return
 
   const primary = getPrimaryVariant(item)
-  const { basePrice, finalPrice } = calcPricing(item)
 
   cartStore.addToCart({
-    ...item,
+    id: item.id,
+    product_id: item.id,
+    variant_id: primary?.id ?? null,
+    name: item.name,
     image: resolveImage(item),
     price: basePrice,
+    discount_price: hasDiscount ? finalPrice : null,
     final_price: finalPrice,
-    variant_id: primary?.id ?? null,
-    size: primary?.size ?? null,
-    color: primary?.color ?? null,
+    size: primary?.size ?? '',
+    color: primary?.color ?? '',
+    quantity: 1,
     stock: availableStock,
   })
 }
@@ -257,17 +355,36 @@ const loadLatestProducts = async () => {
   try {
     isLoading.value = true
     errorText.value = ''
+    brokenImages.value = {}
 
-    const res = await fetch(`${BACKEND_URL}/api/products`)
-    if (!res.ok) throw new Error('دریافت محصولات با خطا مواجه شد.')
+    const endpoint = BACKEND_URL ? `${BACKEND_URL}/api/products` : '/api/products'
+    const res = await fetch(endpoint, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      throw new Error('دریافت محصولات با خطا مواجه شد.')
+    }
 
     const payload = await res.json()
-    const rawItems = Array.isArray(payload) ? payload : (payload.data ?? [])
 
-    // فیلتر محصولات فعال و مرتب‌سازی بر اساس جدیدترین تاریخ ایجاد
+    const rawItems = Array.isArray(payload)
+      ? payload
+      : (payload.data ?? [])
+
+    // فیلتر محصولات فعال و مرتب‌سازی جدیدترین‌ها
     latestList.value = rawItems
-      .filter((item) => item.is_active !== false && item.is_active !== 0)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .filter(
+        (item) => item.is_active !== false && item.is_active !== 0
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
+      )
+
   } catch (err) {
     console.error(err)
     errorText.value = err.message || 'ارتباط با سرور برقرار نشد.'
@@ -391,7 +508,7 @@ onMounted(loadLatestProducts)
   filter: drop-shadow(0 14px 24px rgba(139, 118, 87, 0.16));
 }
 
-/* ۱. بدنه کارت عمودی */
+/* بدنه کارت */
 .item-card {
   position: relative;
   display: flex;
@@ -402,12 +519,12 @@ onMounted(loadLatestProducts)
   z-index: 1;
 }
 
-/* ۲. اعمال برش Inverted Radius ظریف روی پس‌زمینه کارت */
+/* برش منحنی کارت */
 .item-card::before {
-  --r: 16px; /* شعاع گردی لبه‌های برش */
-  --s: 20px; /* شعاع فرورفتگی داخلی */
-  --x: 6px; /* افست افقی */
-  --y: 6px; /* افست عمودی */
+  --r: 16px;
+  --s: 20px;
+  --x: 6px;
+  --y: 6px;
 
   content: '';
   position: absolute;
@@ -427,6 +544,7 @@ onMounted(loadLatestProducts)
       calc(-1 * var(--r) - var(--y)),
     var(--_g) calc(var(--_d) + var(--x)) 0,
     var(--_g) 0 calc(-1 * var(--_d) - var(--y));
+
   mask:
     calc(var(--_d) + var(--x)) 100% var(--_m),
     0 calc(100% - var(--_d) - var(--y)) var(--_m),
@@ -434,11 +552,12 @@ onMounted(loadLatestProducts)
       calc(-1 * var(--r) - var(--y)),
     var(--_g) calc(var(--_d) + var(--x)) 0,
     var(--_g) 0 calc(-1 * var(--_d) - var(--y));
+
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }
 
-/* ۳. بخش تصویر عمودی و کشیده */
+/* تصویر محصول */
 .item-figure {
   position: relative;
   width: 100%;
@@ -493,7 +612,7 @@ onMounted(loadLatestProducts)
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
-/* ۴. جزئیات کارت */
+/* جزئیات کارت */
 .item-details {
   display: flex;
   flex-direction: column;
@@ -576,14 +695,14 @@ onMounted(loadLatestProducts)
   color: var(--gold-deep);
 }
 
-/* ۵. فوتر قیمت و تراز شدن با دکمه انحنا */
+/* قیمت */
 .item-bottom-bar {
   margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   padding-top: 12px;
-  padding-left: 48px; /* حاشیه امن برای عدم برخورد قیمت با انحنای گوشه چپ */
+  padding-left: 48px;
   border-top: 1px dashed #e4e4e7;
   min-height: 42px;
 }
@@ -626,7 +745,7 @@ onMounted(loadLatestProducts)
   font-weight: 400;
 }
 
-/* ۶. دکمه دایره‌ای کوچک و تراز شده در مرکز انحنای برش */
+/* دکمه سبد خرید */
 .corner-cart-btn {
   position: absolute;
   left: 0;
@@ -701,7 +820,7 @@ onMounted(loadLatestProducts)
   }
 }
 
-/* دکمه‌های ناوبری اسلایدر */
+/* دکمه‌های اسلایدر */
 :deep(.swiper-button-next),
 :deep(.swiper-button-prev) {
   width: 40px;

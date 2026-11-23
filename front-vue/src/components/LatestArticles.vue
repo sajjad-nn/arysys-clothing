@@ -1,7 +1,5 @@
-
 <template>
   <section class="articles-section" dir="rtl">
-
     <div class="section-header">
       <div class="header-titles">
         <h2>آخرین مقالات</h2>
@@ -14,16 +12,14 @@
       </RouterLink>
     </div>
 
-    <div v-if="loading" class="message">
-      <span class="loader"></span>
+    <div v-if="loading" class="message" role="status">
+      <span class="loader" aria-hidden="true"></span>
       <p>در حال دریافت مقالات...</p>
     </div>
 
-    <div v-else-if="error" class="message error">
+    <div v-else-if="error" class="message error" role="alert">
       <p>دریافت مقالات با خطا مواجه شد.</p>
-      <button class="retry-btn" @click="fetchArticles">
-        تلاش مجدد
-      </button>
+      <button type="button" class="retry-btn" @click="fetchArticles">تلاش مجدد</button>
     </div>
 
     <div v-else-if="articles.length === 0" class="message">
@@ -56,24 +52,18 @@
       }"
       class="articles-swiper"
     >
-
-      <SwiperSlide
-        v-for="article in articles"
-        :key="article.id"
-      >
+      <SwiperSlide v-for="article in articles" :key="article.id">
         <article class="article-card">
-
           <!-- تصویر مقاله -->
-          <RouterLink
-            :to="`/articles/${article.slug}`"
-            class="article-image"
-          >
+          <RouterLink :to="articleLink(article)" class="article-image">
             <img
-              v-if="article.image_url"
-              :src="article.image_url"
+              v-if="hasValidImage(article)"
+              :key="`${article.id}-${getRawImage(article)}`"
+              :src="resolveImage(article)"
               :alt="article.title"
               loading="lazy"
-              @error="onImageError($event)"
+              decoding="async"
+              @error="onImageError(article)"
             />
 
             <div v-else class="no-image">
@@ -84,13 +74,12 @@
 
           <!-- محتوای مقاله -->
           <div class="article-info">
-
             <span class="category">
               {{ article.category?.name || 'مجله مد' }}
             </span>
 
             <h3 :title="article.title">
-              <RouterLink :to="`/articles/${article.slug}`">
+              <RouterLink :to="articleLink(article)">
                 {{ article.title }}
               </RouterLink>
             </h3>
@@ -100,21 +89,14 @@
             </p>
 
             <!-- دکمه در پایین کارت -->
-            <RouterLink
-              :to="`/articles/${article.slug}`"
-              class="article-button"
-            >
+            <RouterLink :to="articleLink(article)" class="article-button">
               <span>ادامه مطلب</span>
               <span class="btn-arrow">←</span>
             </RouterLink>
-
           </div>
-
         </article>
       </SwiperSlide>
-
     </Swiper>
-
   </section>
 </template>
 
@@ -128,30 +110,89 @@ import 'swiper/css'
 import 'swiper/css/navigation'
 
 import articleService from '../services/articleService'
+import { API_BASE } from '@/services/api'
+
+const normalizedApiBase = (API_BASE || '').trim().replace(/\/+$/, '')
 
 const articles = ref([])
 const loading = ref(true)
 const error = ref(false)
+const brokenImages = ref({})
+
+const articleLink = (article) => {
+  const target = article?.slug || article?.id
+  return target ? `/articles/${target}` : '/articles'
+}
+
+const getRawImage = (article) => {
+  return (article?.image_url || article?.image || '').trim()
+}
+
+const hasValidImage = (article) => {
+  const raw = getRawImage(article)
+  if (!raw) return false
+  return !brokenImages.value[`${article.id}::${raw}`]
+}
+
+const resolveImage = (article) => {
+  const raw = getRawImage(article)
+  if (!raw) return ''
+
+  if (/^https?:\/\//i.test(raw)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      raw.startsWith('http://')
+    ) {
+      return raw.replace(/^http:\/\//i, 'https://')
+    }
+    return raw
+  }
+
+  if (raw.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${raw}`
+  }
+
+  const cleanPath = raw
+    .replace(/^\/+/, '')
+    .replace(/^storage\/+/, '')
+
+  return normalizedApiBase
+    ? `${normalizedApiBase}/storage/${cleanPath}`
+    : `/storage/${cleanPath}`
+}
+
+const onImageError = (article) => {
+  const raw = getRawImage(article)
+  if (!raw) return
+
+  brokenImages.value = {
+    ...brokenImages.value,
+    [`${article.id}::${raw}`]: true,
+  }
+}
 
 async function fetchArticles() {
   try {
     loading.value = true
     error.value = false
+    brokenImages.value = {}
 
     const response = await articleService.getArticles()
+    const list = Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response?.data?.data)
+        ? response.data.data
+        : []
 
-    articles.value = response.data || []
-
+    articles.value = list
   } catch (err) {
-    console.error('Latest articles error:', err)
+    console.error('Latest articles error:', err?.response || err)
     error.value = true
   } finally {
     loading.value = false
   }
-}
-
-function onImageError(event) {
-  event.target.style.display = 'none'
 }
 
 onMounted(fetchArticles)

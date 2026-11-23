@@ -88,13 +88,13 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('فروشگاه'),
                 NavigationGroup::make('محتوا'),
                 NavigationGroup::make('استوری و بنر'),
+                NavigationGroup::make('اسلایدر'),
                 NavigationGroup::make('تنظیمات')->collapsed(),
             ])
-
             // دکمه مشاهده سایت در نوار بالا
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_AFTER,
-                fn () => Blade::render(
+                fn() => Blade::render(
                     '<x-filament::button
                         tag="a"
                         href="{{ $url }}"

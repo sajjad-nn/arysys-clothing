@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import api from './api'
+import api, { logout } from './api'
 
 const auth = reactive({
   user: null,
@@ -10,28 +10,38 @@ const auth = reactive({
 
 let checkPromise = null
 
-// ذخیره اطلاعات کاربر بعد از ورود یا ثبت‌نام
 const setUser = (user) => {
-  auth.user = user
-  auth.isLoggedIn = !!user
+  auth.user = user || null
+  auth.isLoggedIn = Boolean(user)
   auth.checked = true
 }
 
-// بررسی نشست کاربر از طریق Laravel Sanctum
-const checkAuth = async () => {
-  if (auth.checked) return auth.user
+const clearAuth = () => {
+  auth.user = null
+  auth.isLoggedIn = false
+  auth.checked = false
+  checkPromise = null
+}
 
-  if (checkPromise) return checkPromise
+const checkAuth = async (force = false) => {
+  if (auth.checked && !force) {
+    return auth.user
+  }
+
+  if (checkPromise) {
+    return checkPromise
+  }
 
   auth.loading = true
 
-  checkPromise = api.get('/api/user')
+  checkPromise = api
+    .get('/api/user')
     .then((response) => {
       setUser(response.data)
       return response.data
     })
     .catch(() => {
-      setUser(null)
+      clearAuth()
       return null
     })
     .finally(() => {
@@ -42,14 +52,29 @@ const checkAuth = async () => {
   return checkPromise
 }
 
-// خروج از حساب
-const clearAuth = () => {
-  setUser(null)
+const handleAuthSuccess = async (userData = null) => {
+  if (userData) {
+    setUser(userData)
+  } else {
+    await checkAuth(true)
+  }
+}
+
+const logoutUser = async () => {
+  try {
+    await logout() // مستقیماً به /api/logout در api.js درخواست می‌زند
+  } catch (error) {
+    console.error('Logout request failed:', error)
+  } finally {
+    clearAuth()
+  }
 }
 
 export {
   auth,
   setUser,
-  checkAuth,
   clearAuth,
+  checkAuth,
+  handleAuthSuccess,
+  logoutUser,
 }

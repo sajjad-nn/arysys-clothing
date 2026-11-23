@@ -1,4 +1,3 @@
-
 <template>
   <main class="product-page">
 
@@ -10,152 +9,328 @@
 
     <!-- خطا -->
     <div v-else-if="error" class="message error">
-      {{ error }}
-
-      <button class="back-button" @click="goBack">
+      <p>{{ error }}</p>
+      <button type="button" class="back-button" @click="goBack">
         بازگشت به فروشگاه
       </button>
     </div>
 
-    <!-- اطلاعات محصول -->
-    <div v-else-if="product" class="product-container">
+    <!-- اطلاعات محصول و نظرات -->
+    <div v-else-if="product" class="product-content">
 
-      <!-- تصویر محصول -->
-      <div class="product-image">
-        <img
-          v-if="currentImage && !imageError"
-          :src="imageUrl(currentImage)"
-          :alt="product.name"
-          @error="imageError = true"
-        />
+      <div class="product-container">
 
-        <div v-if="!currentImage || imageError" class="no-image">
-          تصویر محصول موجود نیست
+        <!-- تصویر محصول -->
+        <div class="product-image">
+          <img
+            v-if="hasValidImage"
+            :key="`${product.id}-${currentImage}`"
+            :src="imageUrl(currentImage)"
+            :alt="product.name"
+            loading="eager"
+            decoding="async"
+            @error="onImageError"
+          />
+
+          <div v-else class="no-image">
+            تصویر محصول موجود نیست
+          </div>
+        </div>
+
+        <!-- مشخصات محصول -->
+        <div class="product-details">
+
+          <span class="category">
+            {{ product.category?.name || 'کالکشن اختصاصی' }}
+          </span>
+
+          <h1>{{ product.name }}</h1>
+
+          <p class="description">
+            {{ product.description || 'توضیحاتی برای این محصول ثبت نشده است.' }}
+          </p>
+
+          <!-- قیمت -->
+          <div class="price">
+            <span v-if="hasDiscount" class="old-price">
+              {{ formatPrice(originalPrice) }} تومان
+            </span>
+
+            <strong v-if="currentPrice !== null">
+              {{ formatPrice(currentPrice) }} تومان
+            </strong>
+
+            <strong v-else class="no-price">
+              قیمت ثبت نشده
+            </strong>
+          </div>
+
+          <!-- انتخاب رنگ و سایز -->
+          <div v-if="hasVariants" class="variant-section">
+
+            <div v-if="colors.length" class="variant-field">
+              <label for="detail-color-select">انتخاب رنگ</label>
+
+              <select id="detail-color-select" v-model="selectedColor">
+                <option
+                  v-for="color in colors"
+                  :key="color"
+                  :value="color"
+                >
+                  {{ color }}
+                </option>
+              </select>
+            </div>
+
+            <div v-if="sizes.length" class="variant-field">
+              <label for="detail-size-select">انتخاب سایز</label>
+
+              <select id="detail-size-select" v-model="selectedSize">
+                <option
+                  v-for="size in sizes"
+                  :key="size"
+                  :value="size"
+                >
+                  {{ size }}
+                </option>
+              </select>
+            </div>
+
+          </div>
+
+          <!-- موجودی -->
+          <div
+            class="stock"
+            :class="{ 'out-stock': currentStock <= 0 }"
+          >
+            <span class="stock-dot"></span>
+
+            {{
+              currentStock > 0
+                ? `${formatPrice(currentStock)} عدد موجود`
+                : 'ناموجود'
+            }}
+          </div>
+
+          <!-- تعداد -->
+          <div class="quantity-section">
+            <label>تعداد</label>
+
+            <div class="quantity-control">
+              <button
+                type="button"
+                @click="decreaseQuantity"
+                :disabled="quantity <= 1"
+                aria-label="کاهش تعداد"
+              >
+                −
+              </button>
+
+              <span>{{ quantity.toLocaleString('fa-IR') }}</span>
+
+              <button
+                type="button"
+                @click="increaseQuantity"
+                :disabled="quantity >= currentStock"
+                aria-label="افزایش تعداد"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <!-- افزودن به سبد خرید -->
+          <button
+            type="button"
+            class="add-to-cart-btn"
+            @click="addToCart"
+            :disabled="currentStock <= 0 || currentPrice === null"
+          >
+            <span>
+              {{ currentStock > 0 ? 'افزودن به سبد خرید' : 'ناموجود' }}
+            </span>
+          </button>
+
+          <p v-if="toastMessage" class="toast-message">
+            {{ toastMessage }}
+          </p>
+
+          <button type="button" class="back-button" @click="goBack">
+            بازگشت به فروشگاه
+          </button>
+
         </div>
       </div>
 
-      <!-- مشخصات محصول -->
-      <div class="product-details">
+      <!-- بخش نظرات -->
+      <section class="reviews-section">
 
-        <span class="category">
-          {{ product.category?.name || 'کالکشن اختصاصی' }}
-        </span>
+        <div class="reviews-heading">
+          <div>
+            <span class="reviews-subtitle">نظرات خریداران</span>
+            <h2>نظرات کاربران درباره این محصول</h2>
+          </div>
 
-        <h1>{{ product.name }}</h1>
-
-        <p class="description">
-          {{ product.description || 'توضیحاتی برای این محصول ثبت نشده است.' }}
-        </p>
-
-        <!-- قیمت -->
-        <div class="price">
-
-          <span v-if="hasDiscount" class="old-price">
-            {{ formatPrice(originalPrice) }} تومان
+          <span class="reviews-count">
+            {{ reviews.length.toLocaleString('fa-IR') }} نظر
           </span>
-
-          <strong v-if="currentPrice !== null">
-            {{ formatPrice(currentPrice) }} تومان
-          </strong>
-
-          <strong v-else class="no-price">
-            قیمت ثبت نشده
-          </strong>
-
         </div>
 
-        <!-- انتخاب رنگ و سایز -->
-        <div v-if="hasVariants" class="variant-section">
-
-          <div v-if="colors.length" class="variant-field">
-            <label>انتخاب رنگ</label>
-
-            <select v-model="selectedColor">
-              <option
-                v-for="color in colors"
-                :key="color"
-                :value="color"
-              >
-                {{ color }}
-              </option>
-            </select>
-          </div>
-
-          <div v-if="sizes.length" class="variant-field">
-            <label>انتخاب سایز</label>
-
-            <select v-model="selectedSize">
-              <option
-                v-for="size in sizes"
-                :key="size"
-                :value="size"
-              >
-                {{ size }}
-              </option>
-            </select>
-          </div>
-
+        <!-- بارگذاری نظرات -->
+        <div v-if="reviewsLoading" class="reviews-message">
+          در حال دریافت نظرات...
         </div>
 
-        <!-- موجودی -->
-        <div
-          class="stock"
-          :class="{ 'out-stock': currentStock <= 0 }"
-        >
-          <span class="stock-dot"></span>
-
-          {{
-            currentStock > 0
-              ? `${formatPrice(currentStock)} عدد موجود`
-              : 'ناموجود'
-          }}
+        <!-- خطای دریافت نظرات -->
+        <div v-else-if="reviewsError" class="reviews-message error">
+          {{ reviewsError }}
+          <button type="button" class="retry-button" @click="fetchReviews">
+            تلاش مجدد
+          </button>
         </div>
 
-        <!-- تعداد -->
-        <div class="quantity-section">
-          <label>تعداد</label>
+        <template v-else>
 
-          <div class="quantity-control">
-            <button
-              type="button"
-              @click="decreaseQuantity"
-              :disabled="quantity <= 1"
+          <!-- فهرست نظرات -->
+          <div v-if="reviews.length" class="reviews-list">
+
+            <article
+              v-for="review in reviews"
+              :key="review.id"
+              class="review-card"
             >
-              −
-            </button>
+              <div class="review-top">
+                <div class="review-user">
+                  <div class="user-avatar">
+                    {{ (review.user?.name || 'ک').charAt(0) }}
+                  </div>
 
-            <span>{{ quantity.toLocaleString('fa-IR') }}</span>
+                  <div>
+                    <strong>
+                      {{ review.user?.name || 'کاربر سایت' }}
+                    </strong>
+
+                    <span class="review-date">
+                      {{ formatDate(review.created_at) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="review-stars" :aria-label="`امتیاز ${review.rating} از ۵`">
+                  <span
+                    v-for="star in 5"
+                    :key="star"
+                    :class="{ active: star <= Number(review.rating) }"
+                  >
+                    ★
+                  </span>
+                </div>
+              </div>
+
+              <p class="review-body">
+                {{ review.body }}
+              </p>
+            </article>
+
+          </div>
+
+          <div v-else class="empty-reviews">
+            <div class="empty-icon">☆</div>
+            <h3>هنوز نظری ثبت نشده است</h3>
+            <p>اولین نفری باشید که تجربه خود را درباره این محصول به اشتراک می‌گذارد.</p>
+          </div>
+
+        </template>
+
+        <!-- فرم ثبت نظر -->
+        <div class="review-form-wrapper">
+
+          <h3>نظر شما درباره این محصول</h3>
+
+          <!-- کاربر مهمان -->
+          <div v-if="!auth.isLoggedIn" class="login-required">
+            <p>برای ثبت نظر ابتدا وارد حساب کاربری خود شوید.</p>
 
             <button
               type="button"
-              @click="increaseQuantity"
-              :disabled="quantity >= currentStock"
+              class="login-button"
+              @click="goToLogin"
             >
-              +
+              ورود به حساب کاربری
             </button>
           </div>
+
+          <!-- کاربر واردشده -->
+          <form
+            v-else
+            class="review-form"
+            @submit.prevent="submitReview"
+          >
+
+            <label class="form-label">
+              امتیاز شما
+            </label>
+
+            <div class="rating-selector" dir="ltr">
+              <button
+                v-for="star in 5"
+                :key="star"
+                type="button"
+                :class="{ selected: star <= reviewRating }"
+                @click="reviewRating = star"
+                :aria-label="`امتیاز ${star}`"
+              >
+                ★
+              </button>
+            </div>
+
+            <label for="review-body" class="form-label">
+              متن نظر
+            </label>
+
+            <textarea
+              id="review-body"
+              v-model="reviewBody"
+              rows="5"
+              maxlength="2000"
+              placeholder="تجربه خود را درباره این محصول بنویسید..."
+              required
+            ></textarea>
+
+            <div class="textarea-footer">
+              <span>
+                {{ reviewBody.length.toLocaleString('fa-IR') }} / ۲۰۰۰
+              </span>
+            </div>
+
+            <p v-if="reviewError" class="form-error">
+              {{ reviewError }}
+            </p>
+
+            <p v-if="reviewSuccess" class="form-success">
+              {{ reviewSuccess }}
+            </p>
+
+            <button
+              type="submit"
+              class="submit-review-btn"
+              :disabled="reviewSubmitting || reviewRating === 0"
+            >
+              {{
+                reviewSubmitting
+                  ? 'در حال ثبت نظر...'
+                  : 'ثبت نظر'
+              }}
+            </button>
+
+            <p class="review-notice">
+              نظر شما پس از بررسی و تأیید مدیریت در سایت نمایش داده می‌شود.
+            </p>
+
+          </form>
         </div>
 
-        <!-- افزودن به سبد خرید -->
-        <button
-          class="add-to-cart-btn"
-          @click="addToCart"
-          :disabled="currentStock <= 0 || currentPrice === null"
-        >
-          <span>
-            {{ currentStock > 0 ? 'افزودن به سبد خرید' : 'ناموجود' }}
-          </span>
-        </button>
-
-        <p v-if="toastMessage" class="toast-message">
-          {{ toastMessage }}
-        </p>
-
-        <button class="back-button" @click="goBack">
-          بازگشت به فروشگاه
-        </button>
-
-      </div>
+      </section>
     </div>
 
   </main>
@@ -173,9 +348,12 @@ import {
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 
+import api from '@/services/api'
+import { auth, checkAuth } from '@/services/auth'
+
 const props = defineProps({
   id: {
-    type: String,
+    type: [String, Number],
     required: true
   }
 })
@@ -183,7 +361,7 @@ const props = defineProps({
 const router = useRouter()
 const cart = useCartStore()
 
-const API_BASE = 'http://127.0.0.1:8000'
+const API_BASE = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
 
 const product = ref(null)
 const loading = ref(true)
@@ -194,10 +372,21 @@ const selectedSize = ref('')
 const quantity = ref(1)
 
 const toastMessage = ref('')
-const imageError = ref(false)
+const brokenImages = ref({})
 
 let toastTimer = null
 
+// وضعیت نظرات
+const reviews = ref([])
+const reviewsLoading = ref(false)
+const reviewsError = ref('')
+
+// وضعیت فرم نظر
+const reviewBody = ref('')
+const reviewRating = ref(0)
+const reviewSubmitting = ref(false)
+const reviewError = ref('')
+const reviewSuccess = ref('')
 
 // تنوع‌های فعال محصول
 const variants = computed(() => {
@@ -210,7 +399,6 @@ const variants = computed(() => {
 
 const hasVariants = computed(() => variants.value.length > 0)
 
-
 // رنگ‌های موجود
 const colors = computed(() => {
   return [
@@ -221,7 +409,6 @@ const colors = computed(() => {
     )
   ]
 })
-
 
 // سایزهای موجود برای رنگ انتخاب‌شده
 const sizes = computed(() => {
@@ -240,7 +427,6 @@ const sizes = computed(() => {
   ]
 })
 
-
 // تنوع انتخاب‌شده
 const selectedVariant = computed(() => {
   if (!hasVariants.value) return null
@@ -258,7 +444,6 @@ const selectedVariant = computed(() => {
   }) || null
 })
 
-
 // تغییر رنگ و هماهنگی سایز
 watch(selectedColor, () => {
   if (!sizes.value.includes(selectedSize.value)) {
@@ -268,12 +453,10 @@ watch(selectedColor, () => {
   quantity.value = 1
 })
 
-
 // تغییر سایز
 watch(selectedSize, () => {
   quantity.value = 1
 })
-
 
 // قیمت اصلی
 const originalPrice = computed(() => {
@@ -290,7 +473,6 @@ const originalPrice = computed(() => {
       ? value
       : null
 })
-
 
 // قیمت با تخفیف
 const currentPrice = computed(() => {
@@ -314,7 +496,6 @@ const currentPrice = computed(() => {
     : originalPrice.value
 })
 
-
 // بررسی تخفیف
 const hasDiscount = computed(() => {
   return (
@@ -323,7 +504,6 @@ const hasDiscount = computed(() => {
     currentPrice.value < originalPrice.value
   )
 })
-
 
 // موجودی
 const currentStock = computed(() => {
@@ -334,23 +514,37 @@ const currentStock = computed(() => {
   return Math.max(0, Number(item.stock) || 0)
 })
 
-
-// تصویر تنوع یا تصویر اصلی
+// تصویر تنوع یا تصویر اصلی با fallback مرحله‌ای
 const currentImage = computed(() => {
-  return (
-    selectedVariant.value?.image ||
-    product.value?.image ||
-    ''
-  )
+  const candidates = [
+    selectedVariant.value?.image_url,
+    selectedVariant.value?.image,
+    product.value?.image_url,
+    product.value?.image
+  ].filter(img => typeof img === 'string' && img.trim() !== '')
+
+  const uniqueCandidates = [...new Set(candidates)]
+  const pid = product.value?.id ?? props.id
+
+  for (const raw of uniqueCandidates) {
+    if (!brokenImages.value[`${pid}::${raw}`]) {
+      return raw
+    }
+  }
+
+  return ''
 })
 
+const hasValidImage = computed(() => Boolean(currentImage.value))
 
-// اصلاح خطای تصویر:
-// این watch باید بعد از تعریف currentImage باشد.
-watch(currentImage, () => {
-  imageError.value = false
+// اصلاح موجودی انتخاب‌شده در صورت تغییر تنوع
+watch(currentStock, (stock) => {
+  if (stock <= 0) {
+    quantity.value = 1
+  } else if (quantity.value > stock) {
+    quantity.value = stock
+  }
 })
-
 
 // افزایش تعداد
 function increaseQuantity() {
@@ -359,14 +553,12 @@ function increaseQuantity() {
   }
 }
 
-
 // کاهش تعداد
 function decreaseQuantity() {
   if (quantity.value > 1) {
     quantity.value--
   }
 }
-
 
 // فرمت قیمت
 function formatPrice(value) {
@@ -381,33 +573,64 @@ function formatPrice(value) {
     : 'ثبت نشده'
 }
 
-
-// آدرس تصویر
+// آدرس تصویر با سازگاری برای هاست و HTTPS
 function imageUrl(image) {
   if (!image) return ''
 
   const value = String(image).trim()
+  if (!value) return ''
 
   if (/^https?:\/\//i.test(value)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      value.startsWith('http://')
+    ) {
+      return value.replace(/^http:\/\//i, 'https://')
+    }
     return value
+  }
+
+  if (value.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${value}`
   }
 
   const cleanPath = value
     .replace(/^\/+/, '')
     .replace(/^storage\/+/, '')
 
-  return `${API_BASE}/storage/${cleanPath}`
+  return API_BASE ? `${API_BASE}/storage/${cleanPath}` : `/storage/${cleanPath}`
 }
 
+function onImageError() {
+  const current = currentImage.value
+  if (!current) return
+
+  const pid = product.value?.id ?? props.id
+  brokenImages.value = {
+    ...brokenImages.value,
+    [`${pid}::${current}`]: true
+  }
+}
 
 // دریافت محصول
 async function fetchProduct() {
   loading.value = true
   error.value = ''
+  selectedColor.value = ''
+  selectedSize.value = ''
+  quantity.value = 1
+  brokenImages.value = {}
 
   try {
     const response = await fetch(
-      `${API_BASE}/api/products/${props.id}`
+      `${API_BASE}/api/products/${props.id}`,
+      {
+        headers: {
+          Accept: 'application/json'
+        }
+      }
     )
 
     if (!response.ok) {
@@ -434,6 +657,108 @@ async function fetchProduct() {
   }
 }
 
+// دریافت نظرات تأییدشده
+async function fetchReviews() {
+  reviewsLoading.value = true
+  reviewsError.value = ''
+
+  try {
+    const response = await api.get(
+      `/api/products/${props.id}/reviews`
+    )
+
+    const result = response.data
+
+    reviews.value = Array.isArray(result)
+      ? result
+      : (result.data || [])
+
+  } catch (err) {
+    console.error('Fetch reviews error:', err)
+
+    reviewsError.value =
+      'دریافت نظرات با خطا مواجه شد.'
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+
+// تاریخ ثبت نظر
+function formatDate(date) {
+  if (!date) return ''
+
+  const value = new Date(date)
+
+  if (Number.isNaN(value.getTime())) return ''
+
+  return value.toLocaleDateString('fa-IR')
+}
+
+// ثبت نظر
+async function submitReview() {
+  reviewError.value = ''
+  reviewSuccess.value = ''
+
+  if (!auth.isLoggedIn) {
+    reviewError.value = 'برای ثبت نظر ابتدا وارد حساب کاربری شوید.'
+    return
+  }
+
+  if (reviewRating.value < 1 || reviewRating.value > 5) {
+    reviewError.value = 'لطفاً امتیاز خود را انتخاب کنید.'
+    return
+  }
+
+  if (reviewBody.value.trim().length < 3) {
+    reviewError.value = 'متن نظر باید حداقل ۳ حرف داشته باشد.'
+    return
+  }
+
+  reviewSubmitting.value = true
+
+  try {
+    const response = await api.post(
+      `/api/products/${props.id}/reviews`,
+      {
+        body: reviewBody.value.trim(),
+        rating: reviewRating.value
+      }
+    )
+
+    reviewSuccess.value =
+      response.data.message ||
+      'نظر شما ثبت شد و پس از تأیید مدیریت نمایش داده می‌شود.'
+
+    reviewBody.value = ''
+    reviewRating.value = 0
+
+  } catch (err) {
+    console.error('Submit review error:', err)
+
+    if (err.response?.status === 409) {
+      reviewError.value =
+        err.response.data.message ||
+        'شما قبلاً برای این محصول نظر ثبت کرده‌اید.'
+    } else if (err.response?.status === 401) {
+      reviewError.value =
+        'نشست کاربری شما منقضی شده است. دوباره وارد شوید.'
+      await checkAuth(true)
+    } else if (err.response?.status === 422) {
+      reviewError.value =
+        Object.values(err.response.data.errors || {})
+          .flat()
+          .join(' ')
+        || 'اطلاعات واردشده معتبر نیست.'
+    } else {
+      reviewError.value =
+        err.response?.data?.message ||
+        'ثبت نظر با خطا مواجه شد. دوباره تلاش کنید.'
+    }
+
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
 
 // نمایش پیام
 function showToast(message) {
@@ -447,7 +772,6 @@ function showToast(message) {
     toastMessage.value = ''
   }, 3000)
 }
-
 
 // افزودن محصول به Pinia
 function addToCart() {
@@ -497,23 +821,47 @@ function addToCart() {
     stock: currentStock.value
   }
 
-  // افزودن به سبد خرید از طریق Pinia
   cart.addToCart(productData)
 
   showToast('محصول با موفقیت به سبد خرید اضافه شد.')
 }
-
 
 // بازگشت به فروشگاه
 function goBack() {
   router.push({ name: 'shop' })
 }
 
+// رفتن به صفحه ورود
+function goToLogin() {
+  router.push('/auth')
+}
 
-onMounted(fetchProduct)
+// بارگذاری مجدد هنگام تغییر شناسه محصول در روتر
+watch(
+  () => props.id,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      reviewError.value = ''
+      reviewSuccess.value = ''
+      await Promise.all([
+        fetchProduct(),
+        fetchReviews()
+      ])
+    }
+  }
+)
 
+// راه‌اندازی صفحه
+onMounted(async () => {
+  await checkAuth()
 
-// پاک‌سازی تایمر هنگام خروج از صفحه
+  await Promise.all([
+    fetchProduct(),
+    fetchReviews()
+  ])
+})
+
+// پاک‌سازی تایمر
 onBeforeUnmount(() => {
   if (toastTimer) {
     clearTimeout(toastTimer)
@@ -531,9 +879,12 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.product-container {
+.product-content {
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.product-container {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 55px;
@@ -797,6 +1148,304 @@ onBeforeUnmount(() => {
   }
 }
 
+/* =========================
+   بخش نظرات
+========================= */
+
+.reviews-section {
+  margin-top: 90px;
+  padding-top: 45px;
+  border-top: 1px solid #e4e4e7;
+}
+
+.reviews-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.reviews-subtitle {
+  color: #a38253;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reviews-heading h2 {
+  margin: 10px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.reviews-count {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: #f4f4f5;
+  color: #52525b;
+  font-size: 13px;
+}
+
+.reviews-message {
+  padding: 25px;
+  text-align: center;
+  color: #71717a;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 25px;
+}
+
+.reviews-message.error {
+  color: #dc2626;
+}
+
+.retry-button {
+  display: block;
+  margin: 12px auto 0;
+  border: none;
+  background: transparent;
+  color: #a38253;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* کارت نظر */
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.review-card {
+  padding: 22px;
+  border: 1px solid #eeeef0;
+  border-radius: 14px;
+  background: white;
+}
+
+.review-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f3eee7;
+  color: #a38253;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.review-user strong {
+  display: block;
+  font-size: 14px;
+}
+
+.review-date {
+  display: block;
+  margin-top: 5px;
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.review-stars {
+  display: flex;
+  gap: 3px;
+  color: #d4d4d8;
+  font-size: 18px;
+}
+
+.review-stars span.active {
+  color: #e5a323;
+}
+
+.review-body {
+  margin: 18px 0 0;
+  color: #52525b;
+  font-size: 14px;
+  line-height: 2.2;
+  white-space: pre-wrap;
+}
+
+/* بدون نظر */
+.empty-reviews {
+  padding: 35px 20px;
+  text-align: center;
+  border-radius: 14px;
+  background: white;
+}
+
+.empty-icon {
+  color: #d4d4d8;
+  font-size: 42px;
+}
+
+.empty-reviews h3 {
+  margin: 12px 0;
+  font-size: 17px;
+}
+
+.empty-reviews p {
+  color: #71717a;
+  font-size: 13px;
+  line-height: 2;
+}
+
+/* فرم ثبت نظر */
+.review-form-wrapper {
+  margin-top: 40px;
+  padding: 28px;
+  border: 1px solid #eeeef0;
+  border-radius: 16px;
+  background: white;
+}
+
+.review-form-wrapper h3 {
+  margin: 0 0 25px;
+  font-size: 18px;
+}
+
+.login-required {
+  padding: 20px;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.login-required p {
+  color: #52525b;
+  font-size: 14px;
+}
+
+.login-button {
+  padding: 11px 22px;
+  border: none;
+  border-radius: 9px;
+  background: #18181b;
+  color: white;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.form-label {
+  margin: 15px 0 10px;
+  color: #3f3f46;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rating-selector {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.rating-selector button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #d4d4d8;
+  font-size: 32px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.rating-selector button.selected {
+  color: #e5a323;
+}
+
+.rating-selector button:hover {
+  transform: scale(1.15);
+}
+
+.review-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px;
+  border: 1px solid #e4e4e7;
+  border-radius: 10px;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 2;
+  color: #27272a;
+}
+
+.review-form textarea:focus {
+  border-color: #a38253;
+}
+
+.textarea-footer {
+  width: 100%;
+  margin-top: 7px;
+  text-align: left;
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.submit-review-btn {
+  margin-top: 20px;
+  padding: 13px 35px;
+  border: none;
+  border-radius: 10px;
+  background: #18181b;
+  color: white;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.submit-review-btn:hover:not(:disabled) {
+  background: #a38253;
+}
+
+.submit-review-btn:disabled {
+  background: #d4d4d8;
+  cursor: not-allowed;
+}
+
+.review-notice {
+  margin: 15px 0 0;
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 2;
+}
+
+.form-error {
+  margin: 12px 0 0;
+  color: #dc2626;
+  font-size: 13px;
+  line-height: 2;
+}
+
+.form-success {
+  margin: 12px 0 0;
+  color: #15803d;
+  font-size: 13px;
+  line-height: 2;
+}
+
 /* موبایل و تبلت */
 @media (max-width: 768px) {
   .product-page {
@@ -823,6 +1472,32 @@ onBeforeUnmount(() => {
 
   .add-to-cart-btn {
     max-width: 100%;
+  }
+
+  .reviews-section {
+    margin-top: 60px;
+    padding-top: 30px;
+  }
+
+  .reviews-heading h2 {
+    font-size: 18px;
+  }
+
+  .review-form-wrapper {
+    padding: 20px 15px;
+  }
+
+  .review-card {
+    padding: 17px;
+  }
+
+  .review-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .review-stars {
+    margin-right: 54px;
   }
 }
 </style>

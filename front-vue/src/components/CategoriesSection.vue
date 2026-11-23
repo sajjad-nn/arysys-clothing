@@ -7,11 +7,14 @@ import { Autoplay, Navigation } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/navigation'
 
-import api from '../services/api'
+import api, { API_BASE } from '../services/api'
+
+const normalizedApiBase = (API_BASE || '').trim().replace(/\/+$/, '')
 
 const categories = ref([])
 const loading = ref(true)
 const error = ref(false)
+const brokenImages = ref({})
 
 const swiperModules = [Autoplay, Navigation]
 
@@ -21,19 +24,65 @@ const autoplayOptions = {
   pauseOnMouseEnter: true,
 }
 
+const getRawCategoryImage = (category) => {
+  return (category?.image_url || category?.image || '').trim()
+}
+
+const hasValidCategoryImage = (category) => {
+  const raw = getRawCategoryImage(category)
+  if (!raw) return false
+  return !brokenImages.value[`${category.id}::${raw}`]
+}
+
+const resolveCategoryImage = (category) => {
+  const raw = getRawCategoryImage(category)
+  if (!raw) return ''
+
+  if (/^https?:\/\//i.test(raw)) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      raw.startsWith('http://')
+    ) {
+      return raw.replace(/^http:\/\//i, 'https://')
+    }
+    return raw
+  }
+
+  if (raw.startsWith('//')) {
+    const proto = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+    return `${proto}${raw}`
+  }
+
+  const cleanPath = raw.replace(/^\/+/, '').replace(/^storage\/+/, '')
+
+  return normalizedApiBase ? `${normalizedApiBase}/storage/${cleanPath}` : `/storage/${cleanPath}`
+}
+
+const onCategoryImageError = (category) => {
+  const raw = getRawCategoryImage(category)
+  if (!raw) return
+
+  brokenImages.value = {
+    ...brokenImages.value,
+    [`${category.id}::${raw}`]: true,
+  }
+}
+
 const fetchCategories = async () => {
   try {
     loading.value = true
     error.value = false
+    brokenImages.value = {}
 
     const response = await api.get('/api/categories')
-    const data = response.data.data ?? response.data
+    const data = response?.data?.data ?? response?.data
 
     categories.value = Array.isArray(data)
-      ? data.filter((category) => category.is_active !== false)
+      ? data.filter((category) => category.is_active !== false && category.is_active !== 0)
       : []
   } catch (err) {
-    console.error('خطای دریافت دسته‌بندی‌ها:', err)
+    console.error('خطای دریافت دسته‌بندی‌ها:', err?.response || err)
     error.value = true
   } finally {
     loading.value = false
@@ -50,9 +99,12 @@ onMounted(fetchCategories)
       <p>محصولات مورد علاقه‌ات را از دسته‌بندی‌های مختلف پیدا کن</p>
     </div>
 
-    <div v-if="loading" class="message">در حال دریافت دسته‌بندی‌ها...</div>
+    <div v-if="loading" class="message" role="status">در حال دریافت دسته‌بندی‌ها...</div>
 
-    <div v-else-if="error" class="message error">دریافت دسته‌بندی‌ها با مشکل مواجه شد.</div>
+    <div v-else-if="error" class="message error" role="alert">
+      <p>دریافت دسته‌بندی‌ها با مشکل مواجه شد.</p>
+      <button type="button" class="retry-btn" @click="fetchCategories">تلاش مجدد</button>
+    </div>
 
     <div v-else-if="categories.length" class="slider-container">
       <Swiper
@@ -77,28 +129,31 @@ onMounted(fetchCategories)
       >
         <SwiperSlide v-for="category in categories" :key="category.id" class="category-slide">
           <div class="card-wrapper">
-            <RouterLink :to="`/shop?category=${category.slug}`" class="category-card">
+            <RouterLink
+              :to="{ name: 'shop', query: category.slug ? { category: category.slug } : {} }"
+              class="category-card"
+            >
               <!-- تصویر دسته‌بندی از دیتابیس -->
-
               <img
-                v-if="category.image_url"
+                v-if="hasValidCategoryImage(category)"
+                :key="`${category.id}-${getRawCategoryImage(category)}`"
                 class="card-cover"
-                :src="category.image_url"
+                :src="resolveCategoryImage(category)"
                 :alt="category.name"
+                loading="lazy"
+                decoding="async"
+                @error="onCategoryImageError(category)"
               />
 
               <div v-else class="image-placeholder">تصویر موجود نیست</div>
 
               <!-- گرادیان تیره -->
-
               <div class="card-overlay"></div>
 
               <!-- درخشش شیشه‌ای -->
-
               <div class="card-glare"></div>
 
               <!-- عنوان -->
-
               <div class="card-title-box">
                 <h3>{{ category.name }}</h3>
               </div>
@@ -125,7 +180,6 @@ onMounted(fetchCategories)
 }
 
 /* عنوان بخش */
-
 .section-heading {
   text-align: right;
   margin-bottom: 38px;
@@ -160,7 +214,6 @@ onMounted(fetchCategories)
 }
 
 /* اسلایدر */
-
 .slider-container {
   position: relative;
   padding: 12px 2px;
@@ -179,7 +232,6 @@ onMounted(fetchCategories)
 }
 
 /* دکمه‌های قبلی و بعدی */
-
 :deep(.swiper-button-next),
 :deep(.swiper-button-prev) {
   width: 38px;
@@ -213,7 +265,6 @@ onMounted(fetchCategories)
 }
 
 /* کارت */
-
 .card-wrapper {
   width: 100%;
   height: 100%;
@@ -254,7 +305,6 @@ onMounted(fetchCategories)
 }
 
 /* تصویر */
-
 .card-cover {
   position: absolute;
   inset: 0;
@@ -271,7 +321,6 @@ onMounted(fetchCategories)
 }
 
 /* گرادیان پایین کارت */
-
 .card-overlay {
   position: absolute;
   inset: 0;
@@ -287,7 +336,6 @@ onMounted(fetchCategories)
 }
 
 /* عنوان */
-
 .card-title-box {
   position: absolute;
   right: 0;
@@ -334,7 +382,6 @@ onMounted(fetchCategories)
 }
 
 /* بازتاب نور */
-
 .card-glare {
   position: absolute;
   inset: -100%;
@@ -353,7 +400,6 @@ onMounted(fetchCategories)
 }
 
 /* هاور سه‌بعدی و بزرگ شدن کارت */
-
 @media (hover: hover) and (pointer: fine) {
   .category-card:hover {
     transform: translateY(-10px) rotateX(8deg) rotateY(-8deg) scale(1.08);
@@ -389,7 +435,6 @@ onMounted(fetchCategories)
   }
 
   /* بلور شدن تصاویر کارت‌های دیگر */
-
   .categories-slider:has(.category-card:hover) .category-card:not(:hover) .card-cover {
     filter: blur(3px);
     transform: scale(1.04);
@@ -397,7 +442,6 @@ onMounted(fetchCategories)
 }
 
 /* کاهش حرکت */
-
 @media (prefers-reduced-motion: reduce) {
   .category-card,
   .card-cover,
@@ -408,7 +452,6 @@ onMounted(fetchCategories)
 }
 
 /* تصویر ناموجود */
-
 .image-placeholder {
   position: absolute;
   inset: 0;
@@ -423,7 +466,6 @@ onMounted(fetchCategories)
 }
 
 /* پیام‌ها */
-
 .message {
   max-width: 520px;
   margin: 0 auto;
@@ -443,8 +485,19 @@ onMounted(fetchCategories)
   color: #c0392b;
 }
 
-/* تبلت */
+.retry-btn {
+  margin-top: 12px;
+  padding: 8px 18px;
+  background: #18181b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
 
+/* تبلت */
 @media (max-width: 1100px) {
   .categories-section {
     width: 90%;
@@ -452,7 +505,6 @@ onMounted(fetchCategories)
 }
 
 /* موبایل */
-
 @media (max-width: 600px) {
   .categories-section {
     width: 90%;
