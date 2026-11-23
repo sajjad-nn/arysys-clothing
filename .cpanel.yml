@@ -1,0 +1,9 @@
+
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/msfkrzrk/arysys-backend
+    - /bin/cp -R backend/app $DEPLOYPATH/
+    - /bin/cp -R backend/routes $DEPLOYPATH/
+    - /bin/cp -R backend/database/migrations $DEPLOYPATH/database/
+    - /bin/cp backend/config/cors.php $DEPLOYPATH/config/cors.php
